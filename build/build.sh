@@ -45,7 +45,6 @@ CMAKE_OPTIONS=(
     -DPICO_BOARD="pico2_w"
     -DPICO_PLATFORM="rp2350"
     -DFREERTOS_KERNEL_PATH="$PROJECT_ROOT_DIR/libs/FreeRTOS-Kernel"
-    -DCMAKE_EXPORT_COMPILE_COMMANDS=1
     )
 
 START "Running CMake configuration"
@@ -54,13 +53,6 @@ for option in "${CMAKE_OPTIONS[@]}"; do
     INFO "$option"
 done
 cmake "${CMAKE_OPTIONS[@]}" ..
-if [ $? -eq 0 ]; then
-    ln -sf "$OUT_DIR/compile_commands.json" "$PROJECT_ROOT_DIR/compile_commands.json" 
-    DONE "CMake configuration complete"
-else
-    ERROR "CMake configuration failed"
-    exit 1
-fi
 
 START "Compiling project"
 make -j$(nproc)
