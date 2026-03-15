@@ -45,6 +45,7 @@ CMAKE_OPTIONS=(
     -DPICO_BOARD="pico2_w"
     -DPICO_PLATFORM="rp2350"
     -DFREERTOS_KERNEL_PATH="$PROJECT_ROOT_DIR/libs/FreeRTOS-Kernel"
+    -DPICOTOOL_FETCH_FROM_GIT_PATH="$HOME/.pico/picotool"
     )
 
 START "Running CMake configuration"
