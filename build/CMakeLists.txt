@@ -26,7 +26,7 @@ add_executable(pico2w-thermometer
     ${SRC}
     ${APP}
     ${KERNEL}
-    ${DRI_SRC}
+    ${DRI}
 )
 
 # ---- Add include directories ----
