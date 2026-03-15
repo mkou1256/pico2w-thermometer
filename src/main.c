@@ -1,22 +1,17 @@
 #include "common.h"
-#include "led_toggle.h"
+#include "static_object.h"
 
 int main(void)
 {
-    stdio_init_all(); // USBシリアル通信の初期化
+    stdio_init_all();
     printf("Hello, Raspberry Pi Pico 2 W with FreeRTOS!\n");
-
-    // LEDトグルタスクの作成
-    xTaskCreate(ledToggle_task, "LED Toggle Task", configMINIMAL_STACK_SIZE, NULL, tskIDLE_PRIORITY + 1, NULL);
-
-    // スケジューラの開始
+    ER ercd = cre_static_tasks();
+    if (ercd != E_OK) {
+        printf("Failed to create static tasks\n");
+        return -1;
+    }
     vTaskStartScheduler();
 
-    // スケジューラが正常に開始された場合、ここには到達しない
-    for (;;)
-    {
-        // エラー処理やリセットなどを行うことも可能
-    }
-
-    return 0; // 通常は到達しない
+    for (;;) {}
+    return 0;
 }
