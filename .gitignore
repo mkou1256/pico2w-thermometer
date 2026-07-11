@@ -1,5 +1,8 @@
 out
 
+# Claude Code の個人ローカル設定
+.claude/settings.local.json
+
 # Prerequisites
 *.d
 
