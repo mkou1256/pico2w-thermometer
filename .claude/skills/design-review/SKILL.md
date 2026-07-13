@@ -27,21 +27,38 @@ draw.io の `.drawio.svg` 設計図を読み、**忖度なし・厳しめ**に�
 
 ## Phase 0 — 図の取り込みと構造抽出
 
-1. 対象 `.drawio.svg` を特定する（省略時は `docs/design/` を Glob）。
-2. **mxGraphModel XML を抽出する**。`.drawio.svg`（Editable SVG）はルート `<svg>` の
-   `content="..."` 属性に、HTMLエンティティ化された `<mxfile>…<mxGraphModel>…` を内包している。
-   - 推奨抽出手順（Bash / python3）:
-     ```bash
-     python3 - "$SVG" <<'PY'
-     import sys, re, html
-     s = open(sys.argv[1], encoding='utf-8').read()
-     m = re.search(r'content="(.*?)"', s, re.S)
-     print(html.unescape(m.group(1)) if m else "NO_EMBEDDED_XML")
-     PY
-     ```
-   - 図が圧縮保存（base64+deflate の `<diagram>` 本文）されている場合は `base64 -d | python3 -c 'import sys,zlib,urllib.parse;print(urllib.parse.unquote(zlib.decompress(sys.stdin.buffer.read(),-15).decode()))'` で展開する。
-   - **`content` 属性が無い＝非Editable SVG**。その場合はレビューに入らず、
-     「編集可能な `.drawio.svg`（Editable SVG）で保存し直せ。構造が抽出できないと厳密なレビューは不可能」と**突き返す**。
+1. 対象を特定する（省略時は `docs/` 配下を Glob）。**`.drawio.svg`（Editable SVG）と `.drawio.png`（Editable PNG）の両方**に対応する。
+2. **mxGraphModel XML を抽出する**。draw.io は編集用 XML を、SVG なら `<svg>` の `content="..."` 属性に、PNG なら `tEXt`/`zTXt` チャンク（キー `mxfile`）に埋め込んでいる。以下は両対応の抽出手順（Bash / python3）:
+   ```bash
+   python3 - "$FILE" <<'PY'
+   import sys, re, html, struct, zlib, urllib.parse, base64
+   path = sys.argv[1]
+   if path.endswith('.png'):
+       data = open(path, 'rb').read(); pos = 8; mxfile = None
+       while pos < len(data) - 8:
+           length = struct.unpack('>I', data[pos:pos+4])[0]
+           ctype = data[pos+4:pos+8].decode('latin1'); cdata = data[pos+8:pos+8+length]
+           if ctype == 'tEXt':
+               k, _, v = cdata.partition(b'\x00')
+               if k == b'mxfile': mxfile = urllib.parse.unquote(v.decode('latin1'))
+           elif ctype == 'zTXt':
+               k, _, r = cdata.partition(b'\x00')
+               if k == b'mxfile': mxfile = urllib.parse.unquote(zlib.decompress(r[1:]).decode('latin1'))
+           pos += 12 + length
+   else:
+       s = open(path, encoding='utf-8').read()
+       m = re.search(r'content="(.*?)"', s, re.S)
+       mxfile = html.unescape(m.group(1)) if m else None
+   if not mxfile: print("NO_EMBEDDED_XML"); sys.exit()
+   for name, d in re.findall(r'<diagram[^>]*name="([^"]*)"[^>]*>(.*?)</diagram>', mxfile, re.S):
+       d = d.strip()
+       xml = d if '<mxGraphModel' in d else urllib.parse.unquote(zlib.decompress(base64.b64decode(d), -15).decode())
+       print(f"===== ページ: {name} =====\n{xml}")
+   PY
+   ```
+   - `<diagram>` 本文が非圧縮ならそのまま、圧縮（base64+deflate）なら展開する（上のスクリプトが両方吸収する）。
+   - **埋め込み XML が無い（`NO_EMBEDDED_XML`）＝非Editable な画像**。その場合はレビューに入らず、
+     「編集可能な `.drawio.svg` / `.drawio.png` で保存し直せ。構造が抽出できないと厳密なレビューは不可能」と**突き返す**。
 3. 抽出XMLから以下を一覧化する（以降のレビューの根拠データ）:
    - **ノード**: id / label / geometry(x,y,width,height) / style / 親子(container)関係
    - **エッジ**: source / target / label / style（方向・点線/実線）
