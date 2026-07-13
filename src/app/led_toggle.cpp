@@ -1,11 +1,12 @@
 #include "led_toggle.h"
-#include "common.h"
+#include "pico/cyw43_arch.h"
+#include "FreeRTOS.h"
+#include "task.h"
 
 void ledToggle_task(void *pvParameters)
 {
     (void)pvParameters; // 未使用のパラメータを明示的に無視
-    cyw43_arch_init(); // Wi-Fiアーキテクチャの初期化（LED制御に必要）
-    
+
     while (true)
     {
         // LEDの状態をトグル
