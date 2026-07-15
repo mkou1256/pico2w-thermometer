@@ -20,24 +20,24 @@ DONE() {
 ROOT_DIR="$(cd "$(dirname "$0")" && pwd)"
 BUILD_DIR="$ROOT_DIR/build"
 
-if [ -d "$BUILD_DIR" ]; then
+# オプション解析
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --fullbuild|-f)
+      FULLBUILD=true
+      shift
+      ;;
+    *)
+      echo "Unknown option: $1"
+      exit 1
+      ;;
+  esac
+done
+
+if [ "$FULLBUILD" = true ]; then
     INFO "Clean up old build directory..."
     rm -rf "$BUILD_DIR"
 fi
-
-# Clean up stray CMake cache files in build/ directory
-if [ -f "$BUILD_DIR/CMakeCache.txt" ]; then
-    INFO "Removing stray CMakeCache.txt in build/ directory"
-    rm -f "$BUILD_DIR/CMakeCache.txt"
-fi
-if [ -d "$BUILD_DIR/CMakeFiles" ]; then
-    INFO "Removing stray CMakeFiles/ in build/ directory"
-    rm -rf "$BUILD_DIR/CMakeFiles"
-fi
-
-mkdir -p "$BUILD_DIR"
-cd "$BUILD_DIR"
-INFO "build dir: $BUILD_DIR"
 
 CMAKE_OPTIONS=(
     -DPICO_SDK_PATH="$ROOT_DIR/libs/pico-sdk"
@@ -52,13 +52,9 @@ INFO "CMake Options"
 for option in "${CMAKE_OPTIONS[@]}"; do
     INFO "$option"
 done
-cmake "${CMAKE_OPTIONS[@]}" ..
+cmake -S "$ROOT_DIR" -B "$BUILD_DIR" "${CMAKE_OPTIONS[@]}"
 
 START "Compiling project"
-make -j$(nproc)
-if [ $? -eq 0 ]; then
-    DONE "Build completed successfully"
-else
-    ERROR "Build failed"
-    exit 1
-fi
+cmake --build "$BUILD_DIR" -j"$(nproc)"
+
+DONE "Build completed successfully"
