@@ -1,11 +1,12 @@
 cmake_minimum_required(VERSION 3.13)
 
-set(PROJECT_ROOT ${CMAKE_CURRENT_SOURCE_DIR}/..)
+set(PROJECT_ROOT ${CMAKE_CURRENT_SOURCE_DIR})
 set(SRC_DIR ${PROJECT_ROOT}/src)
+set(CMAKE_PATH ${PROJECT_ROOT}/cmake)
 
 # ---- SDK Import ----
-include(pico_sdk_import.cmake)
-include(FreeRTOS_Kernel_import.cmake)
+include(${CMAKE_PATH}/pico_sdk_import.cmake)
+include(${CMAKE_PATH}/FreeRTOS_Kernel_import.cmake)
 project(pico2w-thermometer C CXX ASM)
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_CXX_STANDARD 17)

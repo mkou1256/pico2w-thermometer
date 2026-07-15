@@ -17,13 +17,12 @@ DONE() {
     echo ""
 }
 
-BUILD_DIR="$(cd "$(dirname "$0")" && pwd)"
-OUT_DIR="$BUILD_DIR/out"
-PROJECT_ROOT_DIR="$BUILD_DIR/.."
+ROOT_DIR="$(cd "$(dirname "$0")" && pwd)"
+BUILD_DIR="$ROOT_DIR/build"
 
-if [ -d "$OUT_DIR" ]; then
-    INFO "Clean up old out directory..."
-    rm -rf "$OUT_DIR"
+if [ -d "$BUILD_DIR" ]; then
+    INFO "Clean up old build directory..."
+    rm -rf "$BUILD_DIR"
 fi
 
 # Clean up stray CMake cache files in build/ directory
@@ -36,15 +35,15 @@ if [ -d "$BUILD_DIR/CMakeFiles" ]; then
     rm -rf "$BUILD_DIR/CMakeFiles"
 fi
 
-mkdir -p "$OUT_DIR"
-cd "$OUT_DIR"
-INFO "output dir: $OUT_DIR"
+mkdir -p "$BUILD_DIR"
+cd "$BUILD_DIR"
+INFO "build dir: $BUILD_DIR"
 
 CMAKE_OPTIONS=(
-    -DPICO_SDK_PATH="$PROJECT_ROOT_DIR/libs/pico-sdk"
+    -DPICO_SDK_PATH="$ROOT_DIR/libs/pico-sdk"
     -DPICO_BOARD="pico2_w"
     -DPICO_PLATFORM="rp2350"
-    -DFREERTOS_KERNEL_PATH="$PROJECT_ROOT_DIR/libs/FreeRTOS-Kernel"
+    -DFREERTOS_KERNEL_PATH="$ROOT_DIR/libs/FreeRTOS-Kernel"
     -DPICOTOOL_FETCH_FROM_GIT_PATH="$HOME/.pico/picotool"
     )
 
