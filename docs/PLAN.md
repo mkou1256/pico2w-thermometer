@@ -34,16 +34,14 @@ git 最新コミットは `assert実装`。履歴: Lチカ → FreeRTOSラッパ
 土台はあるので再利用一択。新規プロジェクトは作らない。
 
 ### 設計レビューで突くべき既存の癖
-- `CMakeLists.txt` / `build.sh` / 各種 import.cmake が **`build/` の中**にある（非標準）。
-  `build/` は本来「捨ててよい生成物置き場」なので、設定と生成物（`build/out`）の同居は将来事故りやすい。
-  → リバース設計のときに「あるべき配置」を検討する題材にする。
+- ~~`CMakeLists.txt` / `build.sh` / import.cmake が `build/` の中にある（非標準）~~
+  → **2026-07-16 解消済み**。ルートへ移動し out-of-source 化（→「完了したバックログ」参照）。
 
 ---
 
 ## ロードマップ（design-first）
 
-- [ ] **1. 現状ビルド確認** … `./build/build.sh` が通るか。submodule の pico-sdk が RP2350 対応（≥2.0.0）か確認。
-      何かを足す前に「動く既知の状態」を確保する。←★オーナーが今ビルド中
+- [x] **1. 現状ビルド確認** … ビルド通過確認済み。その後ビルド環境を刷新（→「完了したバックログ」参照）。
 - [ ] **2. 既存アーキのリバース設計** … kernel 層 / app 層 / 静的タスク登録の構造を draw.io で 1 枚に。
       `docs/design/architecture.drawio.svg`。過去の自分のコードを読んで図に落とす訓練。
 - [ ] **3. 温度計モジュールの設計** … `docs/design/thermometer.drawio.svg`。
@@ -79,17 +77,16 @@ float tempC = 27.0f - (v - 0.706f) / 0.001721f; // データシートの式
 
 ---
 
-## バックログ（着手前・リポジトリ整理の後）
+## 完了したバックログ
 
-- **CMake + Ninja によるビルド環境の刷新**（リポジトリ整理が完了してから着手）
-  - 動機: 会社で新機種のビルド環境を検討中（2026-07 時点）で、CMake + Ninja 採用の話が出ている。その素振り・比較検証を、この個人プロジェクトで先に回して勘所を掴みたい。
-  - 前提: 現状 `build/` 配下に CMakeLists / build.sh / 各種 import.cmake が同居する非標準構成（→「既存の癖」参照）。この配置整理とセットで検討する。
-  - 現状の実態（要改善）: `build.sh` は `cmake ..`（デフォルト = Unix Makefiles）＋ `make -j`。しかも毎回 `out/` を `rm -rf` する**フルクリーンビルド**で、増分ビルドを一切使っていない。build/ 配下で cmake を走らせるためキャッシュ（CMakeCache.txt / CMakeFiles）が汚染され、その全消し対処が毎回クリーンの一因になっている。
-  - **着手順序（重要）**: 道具より使い方が先。この順で積み上げる。
-    1. **配置整理**: out-of-source を徹底し、build/ にキャッシュを作らせない（設定と生成物を分離）
-    2. **増分ビルド化**: 毎回の `rm -rf out` をやめる。これが速度に一番効く（make のままでも劇的に速くなる）
-    3. **Ninja 導入**: `cmake -G Ninja` に切り替え（コードは触らない）。増分がさらに速く＋会社の CMake+Ninja 素振り＋ clangd 用 `compile_commands.json` 連携
-  - 注意: Ninja 単体を先に入れても、毎回クリーンのままでは増分メリットが死ぬ（＝速くならない）。1→2 を済ませてから 3。
+- **✅ CMake + Ninja によるビルド環境の刷新**（2026-07-16 完了）
+  - 動機: 会社で新機種のビルド環境を検討中（2026-07 時点）で、CMake + Ninja 採用の話が出ている。その素振り・比較検証を、この個人プロジェクトで先に回して勘所を掴んだ。
+  - 着手順序どおり 1→2→3 で積み上げ、全て完了:
+    1. **✅ 配置整理**: `CMakeLists.txt` / import.cmake を**ルートへ移動**（import は `cmake/` へ集約）。`build/` は生成物専用に。`build.sh` を `cmake -S "$ROOT_DIR" -B "$BUILD_DIR"` の out-of-source 化（`cd build` の名残を撤去）。`.gitignore` に `build` を追加。→ ソースツリーへのキャッシュ汚染が解消し、stray cache の掃除処理も不要に。
+    2. **✅ 増分ビルド化**: 毎回の `rm -rf` を廃止（`--fullbuild` 指定時のみクリーン）。`make` 直叩きをやめ `cmake --build "$BUILD_DIR"` に。→ 変更ファイルだけ再コンパイル。
+    3. **✅ Ninja 導入**: configure に `-G Ninja` を追加。`ninja-build` を apt 導入。generator 切替のため初回のみ `--fullbuild` でクリーン再生成。`cmake --build` は generator 非依存なので build 側は無変更で済んだ。
+  - 学び: 作業は数行だが本質は概念（in-source/out-of-source、`-S`/`-B` の役割分離、`cmake --build` による generator 抽象化）。ハマりどころは全て「CWD 依存」と「generator mismatch」だった。
+  - 残タスク（app内整理フェーズで再考）: CMakeLists の `file(GLOB)` 維持 or 明示リスト化の判断、include パス平坦化（`src` 配下4ディレクトリを全て PRIVATE include）、空の `tests` include ディレクトリの扱い。
 
 ---
 

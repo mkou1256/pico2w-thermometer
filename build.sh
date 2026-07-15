@@ -52,7 +52,7 @@ INFO "CMake Options"
 for option in "${CMAKE_OPTIONS[@]}"; do
     INFO "$option"
 done
-cmake -S "$ROOT_DIR" -B "$BUILD_DIR" "${CMAKE_OPTIONS[@]}"
+cmake -S "$ROOT_DIR" -B "$BUILD_DIR" -G Ninja "${CMAKE_OPTIONS[@]}"
 
 START "Compiling project"
 cmake --build "$BUILD_DIR" -j"$(nproc)"
