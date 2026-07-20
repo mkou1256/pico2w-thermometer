@@ -1,5 +1,6 @@
 #include <stdbool.h>
 #include "pico/stdlib.h"
+#include "pico/cyw43_arch.h"
 #include "FreeRTOS.h"
 #include "task.h"
 #include "app_tasks.h"
@@ -32,7 +33,7 @@ bool pico_init()
         return false;
     }
 
-    if (!cyw43_arch_init()) {
+    if (cyw43_arch_init() != PICO_OK) {
         ASSERT(0);
         return false;
     }
