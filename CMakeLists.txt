@@ -23,12 +23,14 @@ file(GLOB SRC CONFIGURE_DEPENDS ${SRC_DIR}/*.c ${SRC_DIR}/*.cpp)
 file(GLOB APP CONFIGURE_DEPENDS ${SRC_DIR}/app/*.c ${SRC_DIR}/app/*.cpp)
 file(GLOB CONFIG CONFIGURE_DEPENDS ${SRC_DIR}/config/*.c ${SRC_DIR}/config/*.cpp)
 file(GLOB SYSTEM CONFIGURE_DEPENDS ${SRC_DIR}/system/*.c ${SRC_DIR}/system/*.cpp)
+file(GLOB TESTS CONFIGURE_DEPENDS ${PROJECT_ROOT}/tests/*.c ${PROJECT_ROOT}/tests/*.cpp)
 
 add_executable(pico2w-thermometer 
     ${SRC}
     ${APP}
     ${CONFIG}
     ${SYSTEM}
+    ${TESTS}
 )
 
 # ---- Add include directories ----
