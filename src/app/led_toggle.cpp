@@ -2,6 +2,7 @@
 #include "pico/cyw43_arch.h"
 #include "FreeRTOS.h"
 #include "task.h"
+#include "Logger.h"
 
 void ledToggle_task(void *pvParameters)
 {
@@ -14,5 +15,6 @@ void ledToggle_task(void *pvParameters)
         vTaskDelay(pdMS_TO_TICKS(500)); // 500ms待機
         cyw43_arch_gpio_put(CYW43_WL_GPIO_LED_PIN, 0); // LED OFF
         vTaskDelay(pdMS_TO_TICKS(500)); // 500ms待機
+        LOG_DEBUG("HEART BEAT");
     }
 }

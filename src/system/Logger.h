@@ -7,7 +7,7 @@
     } while(0)
 #define LOG_ERROR(...)   LOG_AT(LogLvl::ERROR, __VA_ARGS__)
 #define LOG_WARN(...)   LOG_AT(LogLvl::WARNING, __VA_ARGS__)
-#define LOG_INFO(...)   LOG_AT(LogLvl::IINFO, __VA_ARGS__)
+#define LOG_INFO(...)   LOG_AT(LogLvl::INFO, __VA_ARGS__)
 
 #ifdef APP_DEBUG
 #define LOG_DEBUG(...)  LOG_AT(LogLvl::DEBUG, __VA_ARGS__)
@@ -19,7 +19,7 @@ class ComModule;
 
 enum LogLvl {
     DEBUG = 0,
-    IINFO = 1,
+    INFO = 1,
     WARNING = 2,
     ERROR = 3,
 };

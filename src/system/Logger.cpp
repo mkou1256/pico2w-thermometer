@@ -13,7 +13,7 @@
 
 static bool init_ = false;
 static ComModule* com_module_ = nullptr;
-static LogLvl log_level_ = LogLvl::IINFO;
+static LogLvl log_level_ = LogLvl::INFO;
 static SemaphoreHandle_t log_mutex_ = nullptr;
 static char log_buffer_[LOG_BUFFER_SIZE];
 
@@ -23,7 +23,7 @@ void Logger::init(ComModule* comModule) {
     }
 
     com_module_ = comModule;
-    log_level_ = LogLvl::IINFO; // Default log level
+    log_level_ = LogLvl::DEBUG;
     log_mutex_ = xSemaphoreCreateMutex();
     if (log_mutex_ == nullptr) {
         return;
@@ -37,10 +37,10 @@ void Logger::init(ComModule* comModule) {
 
 static const char* get_lvl_str(LogLvl lvl) {
     switch (lvl) {
-        case LogLvl::DEBUG: return "DEBUG";
-        case LogLvl::IINFO: return "INFO";
-        case LogLvl::WARNING: return "WARNING";
-        case LogLvl::ERROR: return "Error";
+        case LogLvl::DEBUG: return "D";
+        case LogLvl::INFO: return "I";
+        case LogLvl::WARNING: return "W";
+        case LogLvl::ERROR: return "E";
         default: return "";
     }
 }
@@ -86,6 +86,7 @@ void Logger::log(LogLvl level, int line, const char* message, ...) {
 
     int len;
     va_list args;
+
     va_start(args, message);
     len = snprintf(log_buffer_, sizeof(log_buffer_), "[%u][%s][%d]", 
         (uint32_t)(time_us_64() / 1000), get_lvl_str(level), line);
