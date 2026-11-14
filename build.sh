@@ -19,12 +19,17 @@ DONE() {
 
 ROOT_DIR="$(cd "$(dirname "$0")" && pwd)"
 BUILD_DIR="$ROOT_DIR/build"
+BUILD_TYPE="Release"
 
 # オプション解析
 while [ $# -gt 0 ]; do
   case "$1" in
     --fullbuild|-f)
       FULLBUILD=true
+      shift
+      ;;
+    --debug|-d)
+      BUILD_TYPE="Debug"
       shift
       ;;
     *)
@@ -45,7 +50,9 @@ CMAKE_OPTIONS=(
     -DPICO_PLATFORM="rp2350"
     -DFREERTOS_KERNEL_PATH="$ROOT_DIR/libs/FreeRTOS-Kernel"
     -DPICOTOOL_FETCH_FROM_GIT_PATH="$HOME/.pico/picotool"
+    -DCMAKE_BUILD_TYPE=$BUILD_TYPE
     )
+
 
 START "Running CMake configuration"
 INFO "CMake Options"

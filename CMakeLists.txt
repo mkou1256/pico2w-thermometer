@@ -40,6 +40,12 @@ target_include_directories(pico2w-thermometer PRIVATE ${SRC_DIR}/config)
 target_include_directories(pico2w-thermometer PRIVATE ${SRC_DIR}/system)
 target_include_directories(pico2w-thermometer PRIVATE ${PROJECT_ROOT}/tests)
 
+# ---- Add compiler definitions ----
+target_compile_definitions(pico2w-thermometer PRIVATE $<$<CONFIG:Debug>:APP_DEBUG>)
+
+# ---- Add compiler options ----
+target_compile_options(pico2w-thermometer PRIVATE -Wall -Wextra)
+
 # ---- Link required libraries ----
 target_link_libraries(pico2w-thermometer
     pico_stdlib
