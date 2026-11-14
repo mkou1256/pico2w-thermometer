@@ -20,8 +20,27 @@ enum class ComStatus {
 class ComModule {
 public:
     virtual ~ComModule() = default;
+
+    /**
+     * @brief Send data through the communication module
+     * @param data Pointer to the data to send
+     * @param length Length of the data to send
+     * @param timeout Timeout for the operation
+     * @param bytes_sent Pointer to store the number of bytes sent
+     * @return Status of the operation
+     */
     ComStatus Send(const uint8_t* data, size_t length, uint32_t timeout, size_t* bytes_sent);
+
+    /**
+     * @brief Receive data from the communication module
+     * @param data Pointer to the buffer to store received data
+     * @param length Length of the buffer
+     * @param timeout Timeout for the operation
+     * @param bytes_recv Pointer to store the number of bytes received
+     * @return Status of the operation
+     */
     ComStatus Recv(uint8_t* data, size_t length, uint32_t timeout, size_t* bytes_recv);
+
 protected:
     ComModule() {
         send_mtx = xSemaphoreCreateMutex();
