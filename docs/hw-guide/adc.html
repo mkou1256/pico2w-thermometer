@@ -1,0 +1,492 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ADC — ソフトでもわかるハード解説</title>
+<style>
+:root {
+  --bg: #f7f7f4; --panel: #ffffff; --text: #1d1f23; --muted: #646a73;
+  --line: #dedfd9; --accent: #0b6e4f; --accent-bg: #e3f2ec; --code-bg: #f0f1ec;
+  --warn: #b3261e; --warn-bg: #fbe6e6;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #15171a; --panel: #1d2024; --text: #e4e6e9; --muted: #9299a3;
+    --line: #30343a; --accent: #5fd0a5; --accent-bg: #173328; --code-bg: #25292e;
+    --warn: #f08a8e; --warn-bg: #3a1c1e;
+  }
+}
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; scroll-padding-top: 16px; }
+body {
+  margin: 0; background: var(--bg); color: var(--text);
+  font: 15px/1.85 system-ui, "Hiragino Sans", "Noto Sans JP", sans-serif;
+}
+main { max-width: 860px; margin: 0 auto; padding: 24px 16px 64px; }
+.series { color: var(--muted); font-size: 13px; margin: 0; }
+h1 { font-size: 26px; margin: 4px 0 8px; }
+h2 { font-size: 21px; margin: 48px 0 12px; padding-bottom: 6px; border-bottom: 2px solid var(--accent); }
+h3 { font-size: 17px; margin: 32px 0 8px; }
+p { margin: 10px 0; }
+nav.toc { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 10px 16px; margin: 16px 0 8px; font-size: 14px; }
+nav.toc ol { margin: 4px 0; padding-left: 20px; }
+nav.toc ol ol { padding-left: 18px; }
+a { color: var(--accent); }
+.formula { background: var(--code-bg); border-radius: 6px; padding: 8px 14px; margin: 12px 0; text-align: center; }
+ol.steps li { margin: 6px 0; }
+figure { margin: 20px 0; background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 14px 14px 10px; }
+figure svg { display: block; width: 100%; max-width: 100%; height: auto; color: var(--text); }
+figcaption { font-size: 13.5px; color: var(--muted); margin-top: 8px; line-height: 1.7; }
+figcaption b { color: var(--text); }
+.diag text { fill: currentColor; font-size: 12px; font-family: system-ui, "Hiragino Sans", "Noto Sans JP", sans-serif; }
+.diag .t-s { font-size: 11px; }
+.diag .t-m { fill: var(--muted); }
+.diag .t-acc { fill: var(--accent); }
+.diag .t-warn { fill: var(--warn); }
+.diag .ln { stroke: currentColor; stroke-width: 1.5; fill: none; }
+.diag .thin { stroke-width: 1; }
+.diag .mu { stroke: var(--muted); }
+.diag .dash { stroke-dasharray: 5 4; }
+.diag .bx { fill: var(--panel); stroke: currentColor; stroke-width: 1.5; }
+.diag .bx-acc { fill: var(--accent-bg); stroke: var(--accent); stroke-width: 1.5; }
+.diag .bx-m { fill: var(--code-bg); stroke: var(--muted); stroke-width: 1; }
+.diag .bx-warn { fill: var(--warn-bg); stroke: var(--warn); stroke-width: 1.5; }
+.diag .acc { stroke: var(--accent); }
+.diag .warn { stroke: var(--warn); }
+.diag .wide { stroke-width: 2.5; }
+.diag .f-cur { fill: currentColor; }
+.diag .f-acc { fill: var(--accent); }
+.diag .f-warn { fill: var(--warn); }
+.diag .f-m { fill: var(--muted); }
+footer { margin-top: 56px; color: var(--muted); font-size: 13px; border-top: 1px solid var(--line); padding-top: 12px; }
+</style>
+</head>
+<body>
+<main>
+<p class="series"><a href="index.html">ソフトでもわかるハード解説</a></p>
+<h1>ADC（A/D 変換器）</h1>
+
+<nav class="toc">
+<ol>
+  <li><a href="#overview">概要</a>
+    <ol><li><a href="#resolution">分解能</a></li></ol></li>
+  <li><a href="#mechanism">仕組み</a>
+    <ol>
+      <li><a href="#mux">入力の切り替え（マルチプレクサ）</a></li>
+      <li><a href="#sh">電圧の保持（サンプル＆ホールド）</a></li>
+      <li><a href="#sar">数値への変換（逐次比較）</a></li>
+      <li><a href="#vref">基準電圧</a></li>
+      <li><a href="#trigger">変換の開始と完了</a></li>
+      <li><a href="#tempsensor">内蔵温度センサ</a></li>
+    </ol></li>
+  <li><a href="#cautions">注意事項</a>
+    <ol>
+      <li><a href="#init">初期化の順序</a></li>
+      <li><a href="#wait">完了の待ち方</a></li>
+      <li><a href="#share">入力の選択と変換は一続きの操作</a></li>
+      <li><a href="#rmw">制御レジスタの読み・変更・書き</a></li>
+      <li><a href="#accuracy">分解能と精度の違い</a></li>
+      <li><a href="#pin">外部ピンを入力にするとき</a></li>
+      <li><a href="#power">使わないときは止める</a></li>
+    </ol></li>
+</ol>
+</nav>
+
+<!-- ============================================================ -->
+<h2 id="overview">概要</h2>
+
+<p>ADC（アナログ・デジタル変換器）は、入力にかかった電圧を整数に変換する周辺回路である。ソフトウェアから見ると、変換を指示して完了を待ち、結果のレジスタを読むと、電圧に比例した整数が得られる。温度センサ、可変抵抗、電池電圧のように連続的に変わる量をマイコンに取り込むときに使う。</p>
+
+<figure>
+<svg class="diag" viewBox="0 0 770 255" role="img" aria-label="複数の入力のうち1本をマルチプレクサで選び、サンプル＆ホールドで保持し、逐次比較型変換器で数値にして結果レジスタに置く。変換器には基準電圧と変換クロックが入る。">
+  <defs>
+    <marker id="f1a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="f-cur"/></marker>
+    <marker id="f1b" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="f-acc"/></marker>
+  </defs>
+  <rect x="10" y="30" width="120" height="28" rx="4" class="bx"/><text x="70" y="49" text-anchor="middle">入力ピン 0</text>
+  <rect x="10" y="72" width="120" height="28" rx="4" class="bx"/><text x="70" y="91" text-anchor="middle">入力ピン 1</text>
+  <rect x="10" y="114" width="120" height="28" rx="4" class="bx"/><text x="70" y="133" text-anchor="middle">入力ピン 2</text>
+  <text x="70" y="161" text-anchor="middle" class="t-m">⋮</text>
+  <rect x="10" y="170" width="120" height="28" rx="4" class="bx-acc"/><text x="70" y="189" text-anchor="middle">内蔵温度センサ</text>
+  <line x1="130" y1="44" x2="165" y2="44" class="ln"/>
+  <line x1="130" y1="86" x2="165" y2="86" class="ln"/>
+  <line x1="130" y1="128" x2="165" y2="128" class="ln"/>
+  <line x1="130" y1="184" x2="165" y2="184" class="ln acc wide"/>
+  <polygon points="165,20 215,50 215,190 165,220" class="bx"/>
+  <text x="190" y="114" text-anchor="middle" class="t-s">マルチ</text>
+  <text x="190" y="128" text-anchor="middle" class="t-s">プレクサ</text>
+  <line x1="190" y1="238" x2="190" y2="210" class="ln" marker-end="url(#f1a)"/>
+  <text x="190" y="252" text-anchor="middle" class="t-m">チャネル選択</text>
+  <line x1="215" y1="120" x2="287" y2="120" class="ln acc wide" marker-end="url(#f1b)"/>
+  <text x="252" y="110" text-anchor="middle" class="t-acc">選んだ1本</text>
+  <rect x="290" y="95" width="120" height="50" rx="4" class="bx"/>
+  <text x="350" y="116" text-anchor="middle">サンプル＆</text>
+  <text x="350" y="132" text-anchor="middle">ホールド</text>
+  <line x1="410" y1="120" x2="467" y2="120" class="ln acc wide" marker-end="url(#f1b)"/>
+  <text x="439" y="110" text-anchor="middle" class="t-acc">保持電圧</text>
+  <rect x="470" y="95" width="120" height="50" rx="4" class="bx"/>
+  <text x="530" y="116" text-anchor="middle">逐次比較型</text>
+  <text x="530" y="132" text-anchor="middle">変換器（SAR）</text>
+  <text x="530" y="28" text-anchor="middle">基準電圧 Vref</text>
+  <line x1="530" y1="36" x2="530" y2="92" class="ln" marker-end="url(#f1a)"/>
+  <line x1="530" y1="232" x2="530" y2="148" class="ln" marker-end="url(#f1a)"/>
+  <text x="530" y="248" text-anchor="middle">変換クロック</text>
+  <line x1="590" y1="120" x2="647" y2="120" class="ln acc wide" marker-end="url(#f1b)"/>
+  <text x="619" y="110" text-anchor="middle" class="t-acc">整数</text>
+  <rect x="650" y="95" width="110" height="50" rx="4" class="bx"/>
+  <text x="705" y="116" text-anchor="middle">結果</text>
+  <text x="705" y="132" text-anchor="middle">レジスタ</text>
+  <line x1="705" y1="145" x2="705" y2="187" class="ln" marker-end="url(#f1a)"/>
+  <rect x="645" y="190" width="120" height="30" rx="4" class="bx-m"/>
+  <text x="705" y="210" text-anchor="middle">CPU・DMA が読む</text>
+</svg>
+<figcaption><b>図1 ADC の構成。</b>変換器は1つで、複数の入力をマルチプレクサで切り替えて共有する。色付きの線は、温度センサを選んだときに電圧と変換結果がたどる経路である。</figcaption>
+</figure>
+
+<p>マイコン内蔵の ADC は、変換器本体を1つだけ持ち、複数の入力をマルチプレクサで切り替えて共有する構成が多い。変換は「入力を選ぶ」「電圧を一時的に保持する」「保持した電圧を整数にする」の3段で進み、変換の速さは変換クロックで、結果の基準は基準電圧で決まる。仕組みの節では、この3段と基準電圧を順に説明する。</p>
+
+<h3 id="resolution">分解能</h3>
+
+<p>変換結果がとりうる値の数を分解能と呼び、ビット数で表す。12 ビットの ADC は、0V から基準電圧までを 4096 段に区切り、入力電圧がどの段に入るかを 0〜4095 の整数で返す。変換結果と入力電圧の関係は次の式で表せる。</p>
+
+<div class="formula">変換結果 ≒ 入力電圧 ÷ 基準電圧 × 2<sup>ビット数</sup></div>
+
+<figure>
+<svg class="diag" viewBox="0 0 520 300" role="img" aria-label="3ビットADCの入出力特性。入力電圧を8段に区切り、各段の中の電圧はすべて同じ整数になる階段状のグラフ。">
+  <defs>
+    <marker id="f2a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="f-cur"/></marker>
+  </defs>
+  <line x1="60" y1="260" x2="478" y2="260" class="ln" marker-end="url(#f2a)"/>
+  <line x1="60" y1="260" x2="60" y2="42" class="ln" marker-end="url(#f2a)"/>
+  <text x="60" y="30" text-anchor="middle">変換結果</text>
+  <text x="480" y="294" text-anchor="end">入力電圧</text>
+  <text x="60" y="278" text-anchor="middle">0</text>
+  <text x="260" y="278" text-anchor="middle">Vref/2</text>
+  <text x="460" y="278" text-anchor="middle">Vref</text>
+  <line x1="460" y1="256" x2="460" y2="264" class="ln thin"/>
+  <line x1="260" y1="256" x2="260" y2="264" class="ln thin"/>
+  <text x="48" y="264" text-anchor="end" class="t-s">0</text>
+  <text x="48" y="239" text-anchor="end" class="t-s">1</text>
+  <text x="48" y="214" text-anchor="end" class="t-s">2</text>
+  <text x="48" y="189" text-anchor="end" class="t-s">3</text>
+  <text x="48" y="164" text-anchor="end" class="t-s">4</text>
+  <text x="48" y="139" text-anchor="end" class="t-s">5</text>
+  <text x="48" y="114" text-anchor="end" class="t-s">6</text>
+  <text x="48" y="89" text-anchor="end" class="t-s">7</text>
+  <line x1="60" y1="260" x2="460" y2="60" class="ln mu thin dash"/>
+  <polyline points="60,260 110,260 110,235 160,235 160,210 210,210 210,185 260,185 260,160 310,160 310,135 360,135 360,110 410,110 410,85 460,85" class="ln"/>
+  <line x1="260" y1="160" x2="310" y2="160" class="ln acc" stroke-width="4"/>
+  <text x="318" y="178" class="t-acc">← この幅が1段（1 LSB）</text>
+  <text x="380" y="62" class="t-m t-s">理想の直線</text>
+</svg>
+<figcaption><b>図2 3 ビット（8 段）の ADC の入出力特性。</b>1段の幅より細かい電圧の違いは、同じ整数になる。12 ビットなら同じ範囲を 4096 段に区切るので、基準電圧が 3.3V のとき1段は約 0.8mV になる。</figcaption>
+</figure>
+
+<p>図2 のように、1段の幅（1 LSB）の中にある電圧はすべて同じ整数に丸められる。この丸めによる誤差は最大で 1 LSB 程度であり、どれだけ丁寧に読んでも分解能より細かい違いは取り出せない。ただし、分解能は精度とは別の量である（<a href="#accuracy">分解能と精度の違い</a>）。</p>
+
+<!-- ============================================================ -->
+<h2 id="mechanism">仕組み</h2>
+
+<h3 id="mux">入力の切り替え（マルチプレクサ）</h3>
+
+<p>変換器が1つなので、同時に変換できる入力は1本だけである。複数の入力を読むときは、入力を選び直しては変換する操作を繰り返す。したがって「いまどの入力を選んでいるか」は ADC 全体で1つしかない状態であり、複数のタスクが別々の入力を読むと、この状態を取り合うことになる。取り合いへの対処は注意事項の<a href="#share">入力の選択と変換は一続きの操作</a>で扱う。</p>
+
+<p>入力を切り替えた直後は、前に選んでいた入力の電荷が、次に説明する保持用のコンデンサに残っていることがある。信号源の抵抗が大きい入力では、切り替え直後の1回目の結果が前の入力の値の側にずれる。</p>
+
+<h3 id="sh">電圧の保持（サンプル＆ホールド）</h3>
+
+<p>変換には一定の時間がかかり、その間に入力電圧が変わると結果が定まらない。そこで ADC は、変換の直前にスイッチを閉じて小さなコンデンサを入力電圧まで充電し（サンプル）、スイッチを開いてその電圧を保ったまま変換する（ホールド）。</p>
+
+<figure>
+<svg class="diag" viewBox="0 0 770 250" role="img" aria-label="信号源の抵抗とスイッチを通してコンデンサを充電する回路と、その充電曲線。抵抗が大きいとサンプル期間の終わりまでに入力電圧へ届かず、届かなかった差が誤差になる。">
+  <defs>
+    <marker id="f3a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="f-cur"/></marker>
+  </defs>
+  <circle cx="60" cy="120" r="20" class="bx"/>
+  <text x="60" y="124" text-anchor="middle">Vin</text>
+  <line x1="60" y1="100" x2="60" y2="60" class="ln"/>
+  <line x1="60" y1="60" x2="100" y2="60" class="ln"/>
+  <rect x="100" y="52" width="60" height="16" class="bx"/>
+  <text x="130" y="44" text-anchor="middle">Rs</text>
+  <text x="130" y="90" text-anchor="middle" class="t-m t-s">信号源の抵抗</text>
+  <line x1="160" y1="60" x2="200" y2="60" class="ln"/>
+  <circle cx="200" cy="60" r="3" class="f-cur"/>
+  <circle cx="240" cy="60" r="3" class="f-cur"/>
+  <line x1="200" y1="60" x2="236" y2="44" class="ln"/>
+  <text x="220" y="32" text-anchor="middle">スイッチ</text>
+  <line x1="240" y1="60" x2="340" y2="60" class="ln"/>
+  <circle cx="280" cy="60" r="3" class="f-cur"/>
+  <line x1="280" y1="60" x2="280" y2="96" class="ln"/>
+  <line x1="264" y1="96" x2="296" y2="96" class="ln" stroke-width="2.5"/>
+  <line x1="264" y1="106" x2="296" y2="106" class="ln" stroke-width="2.5"/>
+  <line x1="280" y1="106" x2="280" y2="150" class="ln"/>
+  <text x="304" y="105">容量 C</text>
+  <line x1="340" y1="60" x2="378" y2="60" class="ln" marker-end="url(#f3a)"/>
+  <text x="336" y="50">変換器へ</text>
+  <line x1="60" y1="140" x2="60" y2="150" class="ln"/>
+  <line x1="48" y1="150" x2="72" y2="150" class="ln"/><line x1="52" y1="155" x2="68" y2="155" class="ln"/><line x1="56" y1="160" x2="64" y2="160" class="ln"/>
+  <line x1="268" y1="150" x2="292" y2="150" class="ln"/><line x1="272" y1="155" x2="288" y2="155" class="ln"/><line x1="276" y1="160" x2="284" y2="160" class="ln"/>
+
+  <line x1="450" y1="200" x2="742" y2="200" class="ln" marker-end="url(#f3a)"/>
+  <line x1="450" y1="200" x2="450" y2="36" class="ln" marker-end="url(#f3a)"/>
+  <text x="450" y="26" text-anchor="middle">C の電圧</text>
+  <text x="742" y="230" text-anchor="end">時間</text>
+  <line x1="450" y1="60" x2="740" y2="60" class="ln mu thin dash"/>
+  <text x="444" y="64" text-anchor="end">Vin</text>
+  <line x1="650" y1="40" x2="650" y2="204" class="ln mu thin dash"/>
+  <text x="650" y="218" text-anchor="middle" class="t-m t-s">サンプル終了</text>
+  <polyline points="450,200 465,145 480,111.5 495,91.2 510,79 540,67 570,62.6 610,60.7 740,60" class="ln"/>
+  <text x="540" y="52">Rs が小さい：Vin に届く</text>
+  <polyline points="450,200 480,174.6 510,153.8 540,136.8 570,122.9 600,111.5 650,96.9 700,86.5 740,80.2" class="ln warn"/>
+  <text x="560" y="150" class="t-warn">Rs が大きい：届かない</text>
+  <line x1="644" y1="61" x2="644" y2="96" class="ln warn" stroke-width="2"/>
+  <text x="636" y="84" text-anchor="end" class="t-warn">誤差</text>
+</svg>
+<figcaption><b>図3 サンプル＆ホールドの回路と充電の様子。</b>コンデンサは信号源の抵抗 Rs を通して充電される。Rs が大きいと、サンプル期間が終わる時点で入力電圧に届かず、届かなかった差がそのまま変換結果の誤差になる。</figcaption>
+</figure>
+
+<p>図3 の右側が示すように、コンデンサは信号源の抵抗を通して充電されるので、抵抗が大きいとサンプル期間内に入力電圧まで届かない。届かなかった差は、そのまま変換結果の誤差になる。サンプル期間を長く設定できる ADC もあるが、設定できない場合は、信号源とピンの間にバッファ（オペアンプ）やコンデンサを入れるハード側の対策が必要になる。ソフトウェアからは、この問題は「高抵抗の信号源だと値がずれる」「入力を切り替えた直後だけ値がおかしい」という症状として現れる。</p>
+
+<h3 id="sar">数値への変換（逐次比較）</h3>
+
+<p>マイコン内蔵の ADC の多くは逐次比較型（SAR 型）である。逐次比較型は、保持した電圧を内部で作った比較用の電圧と比べ、二分探索で上位から1ビットずつ値を決める。各ビットでは「このビットを1にしたときの比較用電圧が入力以下か」を比較器で判定し、以下なら1を残し、超えたら0に戻す。</p>
+
+<figure>
+<svg class="diag" viewBox="0 0 640 290" role="img" aria-label="4ビット逐次比較の例。入力0.65Vrefに対し、1000、1100、1010、1011を順に試し、結果は1010になる。">
+  <text x="160" y="28" text-anchor="middle">1 回目</text>
+  <text x="290" y="28" text-anchor="middle">2 回目</text>
+  <text x="420" y="28" text-anchor="middle">3 回目</text>
+  <text x="550" y="28" text-anchor="middle">4 回目</text>
+  <line x1="90" y1="240" x2="620" y2="240" class="ln"/>
+  <line x1="90" y1="40" x2="90" y2="240" class="ln"/>
+  <text x="82" y="44" text-anchor="end">Vref</text>
+  <text x="82" y="144" text-anchor="end">Vref/2</text>
+  <text x="82" y="244" text-anchor="end">0</text>
+  <line x1="86" y1="140" x2="94" y2="140" class="ln thin"/>
+  <line x1="86" y1="40" x2="94" y2="40" class="ln thin"/>
+  <rect x="130" y="140" width="60" height="100" class="bx-acc"/>
+  <rect x="260" y="90" width="60" height="150" class="bx-m"/>
+  <rect x="390" y="115" width="60" height="125" class="bx-acc"/>
+  <rect x="520" y="102.5" width="60" height="137.5" class="bx-m"/>
+  <line x1="90" y1="110" x2="620" y2="110" class="ln dash" stroke-width="2"/>
+  <text x="82" y="114" text-anchor="end">Vin</text>
+  <text x="160" y="258" text-anchor="middle">試す 1000</text>
+  <text x="290" y="258" text-anchor="middle">試す 1100</text>
+  <text x="420" y="258" text-anchor="middle">試す 1010</text>
+  <text x="550" y="258" text-anchor="middle">試す 1011</text>
+  <text x="160" y="278" text-anchor="middle" class="t-acc">Vin 以下 → 1</text>
+  <text x="290" y="278" text-anchor="middle" class="t-m">Vin 超え → 0</text>
+  <text x="420" y="278" text-anchor="middle" class="t-acc">Vin 以下 → 1</text>
+  <text x="550" y="278" text-anchor="middle" class="t-m">Vin 超え → 0</text>
+</svg>
+<figcaption><b>図4 4 ビットの逐次比較の例（入力 = 0.65 × Vref）。</b>棒の高さは各回に試す比較用電圧、破線は入力電圧である。色付きの棒はビットを1のまま残した回、灰色の棒は0に戻した回を表す。4 回の比較で結果は 1010（= 10/16 × Vref = 0.625 × Vref）に決まる。</figcaption>
+</figure>
+
+<p>1回の比較で1ビットが決まるので、12 ビットの変換にはサンプル期間に加えて少なくとも 12 回の比較が要る。変換時間が変換クロックの周期で決まるのはこのためであり、変換クロックが止まっていると変換はいつまでも終わらない。</p>
+
+<h3 id="vref">基準電圧</h3>
+
+<p>比較用の電圧は基準電圧を分割して作るので、変換結果は入力電圧そのものではなく、基準電圧に対する比を表す。基準電圧が 1% 低ければ、同じ入力でも変換結果は約 1% 大きく出る。電源電圧をそのまま基準電圧に使うマイコンでは、電源電圧の誤差やノイズが変換結果に直接現れる。変換結果を電圧に換算するときは、実際の基準電圧の値を使う必要がある。</p>
+
+<h3 id="trigger">変換の開始と完了</h3>
+
+<p>変換の開始方法には二通りある。一つは、ソフトウェアが開始を指示するたびに1回だけ変換するワンショット変換で、もう一つは、一度開始すると一定間隔で変換を続ける連続変換である。どちらの方式でも、変換中かどうかはステータスのビットで示され、ソフトウェアはこのビットが完了を示してから結果を読む。</p>
+
+<figure>
+<svg class="diag" viewBox="0 0 720 235" role="img" aria-label="ワンショット変換のタイミング。開始を書き込むと準備完了ビットが下がり、変換が終わると上がる。それまで結果レジスタは前回の値のまま。">
+  <text x="20" y="64">開始の書き込み</text>
+  <text x="20" y="124">準備完了ビット</text>
+  <text x="20" y="184">結果レジスタ</text>
+  <polyline points="170,70 260,70 260,50 275,50 275,70 700,70" class="ln"/>
+  <text x="267" y="42" text-anchor="middle" class="t-s">1 を書く</text>
+  <polyline points="170,110 275,110 275,130 520,130 520,110 700,110" class="ln"/>
+  <text x="397" y="124" text-anchor="middle" class="t-s">変換中（サンプル＋比較）</text>
+  <rect x="170" y="168" width="350" height="24" class="bx-warn" stroke="none"/>
+  <polyline points="170,168 515,168 525,192 700,192" class="ln"/>
+  <polyline points="170,192 515,192 525,168 700,168" class="ln"/>
+  <text x="345" y="185" text-anchor="middle" class="t-warn">前回の値</text>
+  <text x="612" y="185" text-anchor="middle">新しい値</text>
+  <line x1="520" y1="40" x2="520" y2="204" class="ln mu thin dash"/>
+  <text x="528" y="222" class="t-acc">ここから読む</text>
+</svg>
+<figcaption><b>図5 ワンショット変換のタイミング。</b>開始を書き込むと準備完了ビットが下がり、変換が終わると上がる。準備完了ビットが上がる前に結果レジスタを読むと、前回の変換結果が得られる。</figcaption>
+</figure>
+
+<p>連続変換では、変換結果を FIFO（先入れ先出しのバッファ）にためておき、一定数たまったところで割り込みや DMA で取り出す構成が多い。ワンショット変換は、必要なときに1回ずつ値を取る用途に向く。温度のように数秒に1回読めば足りる量なら、ワンショット変換で十分である。</p>
+
+<h3 id="tempsensor">内蔵温度センサ</h3>
+
+<p>多くのマイコンは、ADC の入力の1本としてチップ内部の温度センサを持つ。このセンサは、ダイオード（トランジスタのベース・エミッタ間）の順方向電圧が温度の上昇とともに下がる性質を使う。電圧は 0.7V 前後で、温度が 1℃ 上がるごとに約 2mV 下がる。</p>
+
+<figure>
+<svg class="diag" viewBox="0 0 520 260" role="img" aria-label="ダイオードの順方向電圧と温度の関係。温度が上がるほど電圧はほぼ直線的に下がり、20度で約40ミリボルト下がる。">
+  <defs>
+    <marker id="f6a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="f-cur"/></marker>
+  </defs>
+  <line x1="70" y1="210" x2="498" y2="210" class="ln" marker-end="url(#f6a)"/>
+  <line x1="70" y1="210" x2="70" y2="40" class="ln" marker-end="url(#f6a)"/>
+  <text x="70" y="30" text-anchor="middle">電圧</text>
+  <text x="498" y="250" text-anchor="end">温度</text>
+  <text x="70" y="228" text-anchor="middle">−20℃</text>
+  <text x="275" y="228" text-anchor="middle">30℃</text>
+  <text x="480" y="228" text-anchor="middle">80℃</text>
+  <line x1="275" y1="206" x2="275" y2="214" class="ln thin"/>
+  <line x1="480" y1="206" x2="480" y2="214" class="ln thin"/>
+  <text x="62" y="94" text-anchor="end">0.8 V</text>
+  <text x="62" y="174" text-anchor="end">0.6 V</text>
+  <line x1="66" y1="90" x2="74" y2="90" class="ln thin"/>
+  <line x1="66" y1="170" x2="74" y2="170" class="ln thin"/>
+  <line x1="70" y1="94" x2="480" y2="174" class="ln acc wide"/>
+  <polyline points="275,134 357,134 357,150" class="ln mu"/>
+  <text x="275" y="120">20℃ で約 −40 mV</text>
+</svg>
+<figcaption><b>図6 ダイオードの順方向電圧と温度の関係（典型的な値）。</b>電圧はほぼ直線的に下がるので、変換結果を電圧に直し、傾きと基準点から温度を求める。傾きと基準点の典型値はマイコンのデータシートに載っているが、個体差がある。</figcaption>
+</figure>
+
+<p>温度センサの電圧はピンを通らず内部で ADC につながっているので、ピンの設定は要らない。その代わり、ダイオードに電流を流すバイアス回路を、ADC 本体とは別に有効にする必要があることが多い。</p>
+
+<p>1℃ あたりの変化が約 2mV と小さいので、温度センサの値は基準電圧の誤差の影響を強く受ける。たとえば 0.7V の入力に対して基準電圧が 1% ずれると、換算した電圧は約 7mV ずれ、温度にすると 3〜4℃ の誤差になる。電圧と温度の関係にも個体差があるので、正確な温度が必要な用途では、校正するか外付けの温度センサを使う。</p>
+
+<!-- ============================================================ -->
+<h2 id="cautions">注意事項</h2>
+
+<p>この節では、ドライバを書くときに気を付ける点を、初期化、完了の待ち方、共有、レジスタ操作、精度、ピン設定、消費電力の順に挙げる。</p>
+
+<h3 id="init">初期化の順序</h3>
+
+<p>ADC は、次の順に準備しないと動かない。</p>
+
+<ol class="steps">
+  <li><b>変換クロックを供給する。</b>クロックが止まっていると、変換が始まらず完了もしない。</li>
+  <li><b>ADC ブロックのリセットを解除する。</b>リセット中は、レジスタに書いても反映されない。</li>
+  <li><b>ADC を有効にし、準備完了を待つ。</b>アナログ回路が動作できる状態になるまでに時間がかかる。</li>
+  <li><b>必要なら温度センサのバイアス回路を有効にする。</b>ADC 本体の有効化とは別の設定になっていることが多い。</li>
+</ol>
+
+<p>クロックやリセットの管理は、マイコンによっては起動処理や別のドライバが受け持つ。ADC ドライバが前提として仮定する状態と、自分で確認する状態を分けて決めておくと、他のモジュールとの責任の境目がはっきりする。</p>
+
+<h3 id="wait">完了の待ち方</h3>
+
+<p>準備完了ビットを待つループは、クロックが止まっている、ADC が有効になっていないなど前提が崩れていると、永久に抜けない。ループには回数か時間の上限を設け、超えたらエラーとして呼び出し元に返す。変換時間は数 µs〜数十 µs 程度なので、上限はその数倍から数十倍で足りる。RTOS のティック（多くは 1ms）単位で待つ必要はない。</p>
+
+<p>完了をポーリングで待つか、割り込みで待つかは、変換時間とタスク切り替えのコストの比較で決まる。変換時間が数 µs なら、割り込みでタスクを眠らせてから起こすより、その場でビットを見て待つほうが早く終わる。大量のサンプルを連続して取るときは、連続変換と FIFO、DMA を組み合わせる。</p>
+
+<h3 id="share">入力の選択と変換は一続きの操作</h3>
+
+<p>入力の選択は ADC 全体で1つの状態なので、「選んで、変換して、読む」を複数のタスクから行うと、途中で別のタスクが選択を書き換えうる。</p>
+
+<figure>
+<svg class="diag" viewBox="0 0 660 290" role="img" aria-label="タスクAがチャネル0を選んだ直後にタスクBがチャネル4を選び、Aが変換を開始するとチャネル4の結果を受け取ってしまうシーケンス。">
+  <defs>
+    <marker id="f7a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="f-cur"/></marker>
+    <marker id="f7w" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="f-warn"/></marker>
+  </defs>
+  <rect x="115" y="16" width="110" height="30" rx="4" class="bx"/><text x="170" y="36" text-anchor="middle">タスク A</text>
+  <rect x="305" y="16" width="110" height="30" rx="4" class="bx"/><text x="360" y="36" text-anchor="middle">タスク B</text>
+  <rect x="505" y="16" width="110" height="30" rx="4" class="bx"/><text x="560" y="36" text-anchor="middle">ADC</text>
+  <line x1="170" y1="46" x2="170" y2="275" class="ln mu thin dash"/>
+  <line x1="360" y1="46" x2="360" y2="275" class="ln mu thin dash"/>
+  <line x1="560" y1="46" x2="560" y2="275" class="ln mu thin dash"/>
+  <line x1="170" y1="90" x2="556" y2="90" class="ln" marker-end="url(#f7a)"/>
+  <text x="180" y="83">① チャネル 0 を選ぶ</text>
+  <text x="160" y="144" text-anchor="end" class="t-m t-s">タスク切替 →</text>
+  <line x1="360" y1="140" x2="556" y2="140" class="ln" marker-end="url(#f7a)"/>
+  <text x="370" y="133">② チャネル 4 を選ぶ</text>
+  <line x1="170" y1="190" x2="556" y2="190" class="ln" marker-end="url(#f7a)"/>
+  <text x="180" y="183">③ 変換を開始する</text>
+  <line x1="560" y1="240" x2="174" y2="240" class="ln warn dash" marker-end="url(#f7w)"/>
+  <text x="180" y="233" class="t-warn">④ 結果（中身はチャネル 4 の値）</text>
+</svg>
+<figcaption><b>図7 入力の選択を2つのタスクで取り合った場合。</b>タスク A はチャネル 0 を読むつもりで変換を開始したが、その前にタスク B が選択を書き換えたため、チャネル 4 の値を受け取る。</figcaption>
+</figure>
+
+<p>図7 のような取り違えを防ぐには、選択から読み出しまでを1つの関数にまとめ、その区間をミューテックスなどで排他にする。ADC を使う箇所が1か所に限られるなら排他は省けるが、その場合も「呼び出し元は1か所だけ」という前提を設計として書き残しておく。</p>
+
+<h3 id="rmw">制御レジスタの読み・変更・書き</h3>
+
+<p>ADC の制御レジスタには、有効化、温度センサの有効化、入力の選択、変換開始といった複数の設定が1つのレジスタに同居していることが多い。1つの設定だけを変えるために「読む → 一部を変える → 書く」を行うと、読んでから書くまでの間に割り込み処理が同じレジスタを変えた場合、その変更を古い値で上書きして消してしまう。</p>
+
+<figure>
+<svg class="diag" viewBox="0 45 700 190" role="img" aria-label="通常処理がレジスタを読んだ後、割り込み処理がTSビットを立て、通常処理が古い値をもとに書き戻したためTSビットが消える様子。">
+  <defs>
+    <marker id="f8a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="f-cur"/></marker>
+  </defs>
+  <text x="10" y="74">通常処理</text>
+  <text x="10" y="144">制御レジスタ</text>
+  <text x="10" y="214">割り込み処理</text>
+  <line x1="120" y1="70" x2="690" y2="70" class="ln mu thin dash"/>
+  <line x1="120" y1="210" x2="690" y2="210" class="ln mu thin dash"/>
+  <polyline points="120,128 355,128 365,152 515,152 525,128 690,128" class="ln"/>
+  <polyline points="120,152 355,152 365,128 515,128 525,152 690,152" class="ln"/>
+  <text x="238" y="145" text-anchor="middle">EN=1, TS=0</text>
+  <text x="440" y="145" text-anchor="middle">EN=1, TS=1</text>
+  <rect x="526" y="129" width="163" height="22" class="bx-warn" stroke="none"/>
+  <text x="607" y="145" text-anchor="middle" class="t-warn">EN=1, TS=0</text>
+  <text x="607" y="176" text-anchor="middle" class="t-warn t-s">割り込みの変更が消えた</text>
+  <line x1="200" y1="126" x2="200" y2="76" class="ln" marker-end="url(#f8a)"/>
+  <text x="208" y="104">① 読む</text>
+  <line x1="360" y1="206" x2="360" y2="156" class="ln" marker-end="url(#f8a)"/>
+  <text x="368" y="188">② TS=1 を書く</text>
+  <line x1="520" y1="72" x2="520" y2="124" class="ln" marker-end="url(#f8a)"/>
+  <text x="528" y="100">③ ①の値の一部を変えて書く</text>
+</svg>
+<figcaption><b>図8 読み・変更・書きの途中に割り込みが入った場合。</b>通常処理は①で読んだ古い値をもとに③で書き戻すので、②で割り込み処理が立てたビット（TS）が消える。EN は有効化、TS は温度センサの有効化を表す例である。</figcaption>
+</figure>
+
+<p>対策は二通りある。一つは、読んでから書くまでの間だけ割り込みを禁止する方法である。もう一つは、特定のビットだけを立てる・落とす専用のアドレス（ビット単位のセット・クリア機能）をハードウェアが持つ場合に、それを使う方法である。後者なら、読まずに目的のビットだけを変えられるので、競合そのものが起きない。</p>
+
+<p>変換開始のように「1を書くと動作が始まる」ビットが同じレジスタにある場合は、読んだ値をそのまま書き戻すと、意図しない変換が始まることがある。どのビットが書き込みで動作を起こすのかは、レジスタの説明で確認しておく。</p>
+
+<h3 id="accuracy">分解能と精度の違い</h3>
+
+<p>12 ビットの ADC が、12 ビット分の正確な値を返すわけではない。基準電圧の誤差、ゼロ点のずれ（オフセット誤差）、傾きのずれ（ゲイン誤差）、段の幅の不ぞろい（非直線性）、ノイズが重なるので、実際に信頼できるビット数は分解能より数ビット少ないのが普通である。</p>
+
+<p>ノイズは、複数回読んで平均すると減らせる。入力を切り替えた直後の1回目を捨てる、外れ値を除くために中央値を使う、といった処理も有効であり、これらをドライバで行うか上位で行うかを決めておく。ADC によっては変換中のエラーを示すフラグを持つ。エラーが示された変換結果は値が定まっていないので、捨てて読み直す。</p>
+
+<p>変換結果を電圧や温度に換算する処理をどこに置くかも決めておく。換算には基準電圧や校正値といったボード固有の値が要るので、ドライバは生の変換結果を返し、換算は上位で行う分け方にすると、ドライバがボードに依存しない。</p>
+
+<h3 id="pin">外部ピンを入力にするとき</h3>
+
+<p>外部ピンを ADC の入力に使うときは、そのピンのデジタル機能を切る。</p>
+
+<figure>
+<svg class="diag" viewBox="0 0 640 240" role="img" aria-label="外部ピンにはADCのほか、デジタル入力バッファとプルアップ抵抗がつながっている。どちらも無効にしないと、貫通電流や分圧で測定がずれる。">
+  <defs>
+    <marker id="f9a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="f-cur"/></marker>
+  </defs>
+  <rect x="20" y="100" width="70" height="30" rx="4" class="bx"/>
+  <text x="55" y="120" text-anchor="middle">ピン</text>
+  <line x1="90" y1="115" x2="417" y2="115" class="ln" marker-end="url(#f9a)"/>
+  <circle cx="140" cy="115" r="3" class="f-cur"/>
+  <rect x="420" y="95" width="140" height="40" rx="4" class="bx-acc"/>
+  <text x="490" y="120" text-anchor="middle">ADC へ</text>
+  <text x="140" y="26" text-anchor="middle">電源</text>
+  <line x1="126" y1="32" x2="154" y2="32" class="ln"/>
+  <line x1="140" y1="32" x2="140" y2="45" class="ln"/>
+  <rect x="132" y="45" width="16" height="36" class="bx-warn"/>
+  <line x1="140" y1="81" x2="140" y2="115" class="ln"/>
+  <text x="158" y="60" class="t-warn">← プルアップ／プルダウン抵抗</text>
+  <text x="158" y="78" class="t-warn t-s">無効にする（分圧で電圧が変わる）</text>
+  <line x1="140" y1="115" x2="140" y2="175" class="ln"/>
+  <line x1="140" y1="175" x2="200" y2="175" class="ln"/>
+  <polygon points="200,158 200,192 236,175" class="bx-warn"/>
+  <line x1="236" y1="175" x2="280" y2="175" class="ln"/>
+  <text x="288" y="172" class="t-warn">← デジタル入力バッファ</text>
+  <text x="288" y="190" class="t-warn t-s">無効にする（中間電圧で貫通電流）</text>
+</svg>
+<figcaption><b>図9 外部ピンにつながっている回路。</b>ピンには ADC だけでなく、デジタル入力のバッファとプルアップ（またはプルダウン）抵抗もつながっている。ADC の入力に使うときは、赤で示した2つを無効にする。</figcaption>
+</figure>
+
+<p>デジタル入力のバッファは、0V と電源電圧の中間の電圧が入ると内部のトランジスタが上下とも中途半端にオンになり、電源から GND へ電流が流れ続ける（貫通電流）。消費電流が増えるうえ、その電流がノイズ源にもなる。プルアップやプルダウンの抵抗が有効なままだと、信号源の抵抗との間で分圧が起き、測りたい電圧そのものが変わる。</p>
+
+<p>入力できる電圧の上限も確認する。上限は ADC の電源電圧ではなく、ピンの電源電圧で決まることがある。上限を超えると、保護ダイオードを通じて電流が流れ、測定値が狂うだけでなくチップを傷めるおそれがある。</p>
+
+<h3 id="power">使わないときは止める</h3>
+
+<p>ADC 本体も温度センサのバイアス回路も、有効なあいだ電流を消費する。電池で動かす機器では、変換するときだけ有効にし、終わったら無効にする構成が考えられる。ただし、有効にした直後は準備完了を待つ必要があり、温度センサは安定するまでに時間がかかることもあるので、その待ち時間と消費電流のどちらを優先するかで決める。</p>
+
+<footer>ソフトでもわかるハード解説 — ADC。一般的なマイコン内蔵 ADC を対象とした解説であり、具体的なレジスタ名や数値は使うマイコンのデータシートで確認すること。</footer>
+</main>
+</body>
+</html>
