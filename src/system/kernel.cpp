@@ -5,6 +5,8 @@
 /* タスク関数用のinclude */
 #include "led_toggle.h"
 #include "bootsplash.h"
+#include "temp_sensor.h"
+#include <cstddef>
 
 struct TaskItem {
     TaskFunction_t fn;
@@ -17,12 +19,14 @@ struct TaskItem {
 enum TaskNum {
     TASK_LED_TOGGLE = 0,
     TASK_BOOT_SPLASH,
+    TASK_TEMP_SENSOR,
     TASK_MAX,
 };
 /* この表をもとにタスク生成する */
 static TaskItem s_taskTable[TASK_MAX] = {
     {ledToggle_task,    "led_toggle",   STACK_DEPTH_SMALL,   nullptr,   TASK_PRI_LOW},
     {bootSplash_task,   "boot_splash",  STACK_DEPTH_LARGE,  nullptr,        TASK_PRI_HIGH},
+    {tempSensor_task,   "temp_sensor",  STACK_DEPTH_MID,    nullptr,    TASK_PRI_HIGH},
 };
 static TaskHandle_t s_taskHandles[TASK_MAX];    /* 生成したハンドルはここに入れる */ 
 

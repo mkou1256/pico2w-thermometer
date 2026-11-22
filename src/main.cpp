@@ -1,33 +1,42 @@
+#include "Logger.h"
 #include "pico/stdlib.h"
 #include "pico/cyw43_arch.h"
 #include "FreeRTOS.h"
 #include "task.h"
 #include "kernel.h"
 #include <pico/time.h>
-
-#if 1
-#define BOOT_DBG(fmt, ...) printf("[BOOT] " fmt "\n" __VA_OPT__(,) __VA_ARGS__)
-#else
-#define BOOT_DBG(str)   void(str)
-#endif
+#include "app_assert.h"
+#include "communication/app_com.h"
+#include "dri_adc.h"
 
 #define INIT_TASK_STACKDEPTH    STACK_DEPTH_MID
 #define INIT_TASK_PRI           TASK_PRI_HIGHEST
 #define INIT_TASK_PRI_LOW       TASK_PRI_LOWEST
+
+static bool init_drivers(void) {
+    if (cyw43_arch_init() != 0) return false;
+    ADC_init(AdcTsEn::ENABLE);
+
+    return true;
+}
+
 void init_task(void*) {
-    BOOT_DBG("===> start init_task()\r");
+    /* ログ初期化 */
+    AppCom_Init();
+    Logger::init(getComModule(COM_CHANNEL_USB_SERIAL));
+    sleep_ms(1000);
+
     /* ドライバー初期化 */
-    int ret_cyw43 = cyw43_arch_init();
-    BOOT_DBG("cyw43_arch_init() ret = %d", ret_cyw43);
+    bool ret_dri = init_drivers();
+    ASSERT(ret_dri == true);
 
     /* カーネル生成 */
     int ret_kernel = kernel_init();
-    BOOT_DBG("kernel_init() ret = %d", ret_kernel);
+    ASSERT(ret_kernel == true);
+
+    /* アプリケーション初期化 */
 
 
-    /* アプリケーションタスク起動 */
-
-    BOOT_DBG("<=== end init_task()\r");
     vTaskDelete(nullptr);
 }
 
@@ -35,7 +44,6 @@ int main(void)
 {
     /* ボード初期化 */
     stdio_init_all();
-    BOOT_DBG("stdio_init_all() done\r");
 
     xTaskCreate(init_task, 
         "init_task", 
