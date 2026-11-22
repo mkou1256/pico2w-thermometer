@@ -1,0 +1,362 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FreeRTOS API 早見表</title>
+<style>
+:root {
+  --bg: #f7f7f4; --panel: #ffffff; --text: #1d1f23; --muted: #646a73;
+  --line: #dedfd9; --accent: #0b6e4f; --accent-bg: #e3f2ec;
+  --warn: #9a4a00; --warn-bg: #fdefdc; --no: #a3262b; --no-bg: #fbe6e6;
+  --cfg: #3b4a8f; --cfg-bg: #e8ebf8; --code-bg: #f0f1ec; --hit: #fff3b0;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #15171a; --panel: #1d2024; --text: #e4e6e9; --muted: #9299a3;
+    --line: #30343a; --accent: #5fd0a5; --accent-bg: #173328;
+    --warn: #f0b36a; --warn-bg: #3a2a14; --no: #f08a8e; --no-bg: #3a1c1e;
+    --cfg: #a9b6f5; --cfg-bg: #232a48; --code-bg: #25292e; --hit: #4a4215;
+  }
+}
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; scroll-padding-top: 72px; }
+body {
+  margin: 0; background: var(--bg); color: var(--text);
+  font: 14px/1.6 system-ui, "Hiragino Sans", "Noto Sans JP", sans-serif;
+}
+code, .sig, .name { font-family: ui-monospace, "Cascadia Code", Consolas, monospace; }
+header {
+  position: sticky; top: 0; z-index: 10; background: var(--panel);
+  border-bottom: 1px solid var(--line); padding: 10px 16px;
+  display: flex; gap: 12px; align-items: center; flex-wrap: wrap;
+}
+header h1 { font-size: 16px; margin: 0; white-space: nowrap; }
+#q {
+  flex: 1; min-width: 180px; max-width: 420px; padding: 7px 10px;
+  border: 1px solid var(--line); border-radius: 6px;
+  background: var(--bg); color: var(--text); font-size: 14px;
+}
+#q:focus { outline: 2px solid var(--accent); outline-offset: 0; }
+.hint { color: var(--muted); font-size: 12px; }
+kbd {
+  border: 1px solid var(--line); border-radius: 4px; padding: 0 5px;
+  font-size: 11px; background: var(--bg);
+}
+.layout { display: grid; grid-template-columns: 200px minmax(0, 1fr); }
+nav {
+  position: sticky; top: 53px; align-self: start; height: calc(100vh - 53px);
+  overflow-y: auto; padding: 14px 8px 14px 16px; border-right: 1px solid var(--line);
+}
+nav a {
+  display: block; padding: 5px 8px; border-radius: 5px;
+  color: var(--text); text-decoration: none; font-size: 13px;
+}
+nav a:hover { background: var(--accent-bg); color: var(--accent); }
+nav a .n { color: var(--muted); font-size: 11px; float: right; }
+main { padding: 8px 16px 80px; min-width: 0; }
+section { margin-top: 26px; }
+section h2 {
+  font-size: 17px; margin: 0 0 2px; padding-bottom: 4px;
+  border-bottom: 2px solid var(--accent);
+}
+section h2 small { font-weight: normal; color: var(--muted); font-size: 12px; margin-left: 8px; }
+.note { color: var(--muted); font-size: 13px; margin: 6px 0 10px; }
+.api {
+  background: var(--panel); border: 1px solid var(--line); border-radius: 6px;
+  padding: 9px 12px; margin-top: 6px;
+}
+.api:target { outline: 2px solid var(--accent); background: var(--hit); }
+.api .top { display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; }
+.name { font-weight: 700; font-size: 14px; color: var(--accent); text-decoration: none; }
+.name:hover { text-decoration: underline; }
+.sig {
+  display: block; background: var(--code-bg); border-radius: 4px;
+  padding: 4px 8px; margin: 5px 0; font-size: 12.5px;
+  overflow-x: auto; white-space: pre;
+}
+.desc { margin: 0; }
+.badge {
+  font-size: 11px; padding: 1px 7px; border-radius: 10px; white-space: nowrap;
+}
+.b-isr { background: var(--warn-bg); color: var(--warn); }
+.b-no { background: var(--no-bg); color: var(--no); }
+.b-cfg { background: var(--cfg-bg); color: var(--cfg); font-family: ui-monospace, Consolas, monospace; }
+.empty { display: none; padding: 30px 0; color: var(--muted); }
+.legend { margin: 14px 0 0; font-size: 12px; color: var(--muted); display: flex; gap: 12px; flex-wrap: wrap; }
+@media (max-width: 760px) {
+  .layout { display: block; }
+  nav {
+    position: static; height: auto; border-right: 0; border-bottom: 1px solid var(--line);
+    display: flex; gap: 4px; overflow-x: auto; padding: 8px 16px; white-space: nowrap;
+  }
+  nav a .n { display: none; }
+  .hint { display: none; }
+}
+</style>
+</head>
+<body>
+<header>
+  <h1>FreeRTOS API 早見表</h1>
+  <input id="q" type="search" placeholder="API名・キーワードで絞り込み" autocomplete="off">
+  <span class="hint"><kbd>/</kbd> 検索　<kbd>Enter</kbd> 先頭へジャンプ　<kbd>Esc</kbd> 解除</span>
+</header>
+<div class="layout">
+  <nav id="toc"></nav>
+  <main>
+    <div class="legend">
+      <span><span class="badge b-isr">ISR版</span> 割り込みからは FromISR 版を使う</span>
+      <span><span class="badge b-no">ISR不可</span> 割り込みから呼べない</span>
+      <span><span class="badge b-cfg">config…</span> FreeRTOSConfig.h で有効化が必要</span>
+      <span>対象: FreeRTOS Kernel V11 系 / 待ち時間は tick 単位（<code>pdMS_TO_TICKS(ms)</code> で変換）</span>
+    </div>
+    <div id="content"></div>
+    <p class="empty" id="empty">該当する API がありません。</p>
+  </main>
+</div>
+<script>
+const DATA = [
+{ id: "task", title: "タスク", hdr: "task.h",
+  note: "スタックサイズはバイトではなくワード単位（32bit なら ×4 バイト）。スケジューラ起動後に生成したタスクは、優先度が高ければ即座に走り出す。",
+  apis: [
+  { n: "xTaskCreate", s: "BaseType_t xTaskCreate(TaskFunction_t fn, const char *name, configSTACK_DEPTH_TYPE stackDepth,\n                       void *param, UBaseType_t prio, TaskHandle_t *outHandle)", d: "タスクを動的確保で生成。成功で pdPASS。ハンドル不要なら outHandle は NULL。", isr: "no", cfg: "configSUPPORT_DYNAMIC_ALLOCATION" },
+  { n: "xTaskCreateStatic", s: "TaskHandle_t xTaskCreateStatic(TaskFunction_t fn, const char *name, uint32_t stackDepth, void *param,\n                               UBaseType_t prio, StackType_t *stackBuf, StaticTask_t *tcbBuf)", d: "スタックと TCB を呼び出し側が用意して生成。ヒープを使わない。バッファは静的寿命が必要。", isr: "no", cfg: "configSUPPORT_STATIC_ALLOCATION" },
+  { n: "vTaskDelete", s: "void vTaskDelete(TaskHandle_t task)", d: "タスクを削除。NULL で自分自身。自分を消した場合のメモリ解放は idle タスクが行う。タスク関数から return してはいけない（最後に必ずこれを呼ぶ）。", isr: "no", cfg: "INCLUDE_vTaskDelete" },
+  { n: "vTaskSuspend", s: "void vTaskSuspend(TaskHandle_t task)", d: "タスクを無期限に停止。NULL で自分。vTaskResume されるまで動かない。", isr: "no", cfg: "INCLUDE_vTaskSuspend" },
+  { n: "vTaskResume", s: "void vTaskResume(TaskHandle_t task)", d: "サスペンド中のタスクを再開。", isr: "xTaskResumeFromISR", cfg: "INCLUDE_vTaskSuspend" },
+  { n: "vTaskPrioritySet", s: "void vTaskPrioritySet(TaskHandle_t task, UBaseType_t newPrio)", d: "優先度を変更。数値が大きいほど高優先度（0 が最低、上限は configMAX_PRIORITIES-1）。", isr: "no", cfg: "INCLUDE_vTaskPrioritySet" },
+  { n: "uxTaskPriorityGet", s: "UBaseType_t uxTaskPriorityGet(TaskHandle_t task)", d: "現在の優先度を取得。", isr: "uxTaskPriorityGetFromISR", cfg: "INCLUDE_uxTaskPriorityGet" },
+  { n: "xTaskGetCurrentTaskHandle", s: "TaskHandle_t xTaskGetCurrentTaskHandle(void)", d: "実行中タスクのハンドルを取得。", cfg: "INCLUDE_xTaskGetCurrentTaskHandle" },
+  { n: "pcTaskGetName", s: "char *pcTaskGetName(TaskHandle_t task)", d: "タスク名を取得。NULL で自分。" },
+  { n: "eTaskGetState", s: "eTaskState eTaskGetState(TaskHandle_t task)", d: "状態を取得（eRunning / eReady / eBlocked / eSuspended / eDeleted）。", cfg: "INCLUDE_eTaskGetState" },
+  { n: "taskYIELD", s: "taskYIELD()", d: "同優先度の他タスクへ CPU を明け渡す。より低優先度のタスクには渡らない。", isr: "portYIELD_FROM_ISR" },
+  { n: "vTaskStartScheduler", s: "void vTaskStartScheduler(void)", d: "スケジューラを起動。正常時は戻らない。idle タスク（と有効ならタイマータスク）もここで作られる。", isr: "no" },
+  { n: "xTaskGetSchedulerState", s: "BaseType_t xTaskGetSchedulerState(void)", d: "taskSCHEDULER_NOT_STARTED / RUNNING / SUSPENDED を返す。起動前後で処理を分けるときに使う。", cfg: "INCLUDE_xTaskGetSchedulerState" },
+]},
+{ id: "time", title: "時間・遅延", hdr: "task.h",
+  note: "portMAX_DELAY による無期限待ちは INCLUDE_vTaskSuspend=1 のときだけ本当に無期限になる。",
+  apis: [
+  { n: "vTaskDelay", s: "void vTaskDelay(TickType_t ticks)", d: "呼んだ時点から相対的に ticks だけブロック。処理時間ぶん周期がずれるので、周期実行には不向き。", isr: "no", cfg: "INCLUDE_vTaskDelay" },
+  { n: "xTaskDelayUntil", s: "BaseType_t xTaskDelayUntil(TickType_t *prevWakeTime, TickType_t period)", d: "絶対時刻基準の周期待ち。prevWakeTime は初回だけ xTaskGetTickCount() で初期化し、以降は API が更新する。締め切りを過ぎていて待たなかった場合は pdFALSE。", isr: "no", cfg: "INCLUDE_xTaskDelayUntil" },
+  { n: "xTaskGetTickCount", s: "TickType_t xTaskGetTickCount(void)", d: "起動からの tick 数。オーバーフローで 0 に戻る（差分は符号なし減算で求める）。", isr: "xTaskGetTickCountFromISR" },
+  { n: "pdMS_TO_TICKS", s: "pdMS_TO_TICKS(ms)", d: "ミリ秒を tick に変換するマクロ。1 tick 未満は 0 に切り捨てられる点に注意。" },
+  { n: "xTaskAbortDelay", s: "BaseType_t xTaskAbortDelay(TaskHandle_t task)", d: "ブロック中のタスクを強制的に Ready に戻す。待っていた API はタイムアウト扱いで戻る。", isr: "no", cfg: "INCLUDE_xTaskAbortDelay" },
+  { n: "vTaskSetTimeOutState", s: "void vTaskSetTimeOutState(TimeOut_t *timeout)\nBaseType_t xTaskCheckForTimeOut(TimeOut_t *timeout, TickType_t *ticksToWait)", d: "複数回のブロックにまたがる合計タイムアウトを管理する。残り時間が ticksToWait に書き戻される。", isr: "no" },
+]},
+{ id: "queue", title: "キュー", hdr: "queue.h",
+  note: "データはコピーで渡る（ポインタを入れた場合、指す先の寿命は自分で守る）。成功で pdTRUE、満杯/空でタイムアウトすると errQUEUE_FULL / errQUEUE_EMPTY（= pdFALSE）。",
+  apis: [
+  { n: "xQueueCreate", s: "QueueHandle_t xQueueCreate(UBaseType_t length, UBaseType_t itemSize)", d: "要素数 length、1 要素 itemSize バイトのキューを生成。失敗で NULL。", isr: "no", cfg: "configSUPPORT_DYNAMIC_ALLOCATION" },
+  { n: "xQueueCreateStatic", s: "QueueHandle_t xQueueCreateStatic(UBaseType_t length, UBaseType_t itemSize,\n                                 uint8_t *storage, StaticQueue_t *queueBuf)", d: "記憶域を呼び出し側が用意する版。storage は length×itemSize バイト以上。", isr: "no", cfg: "configSUPPORT_STATIC_ALLOCATION" },
+  { n: "xQueueSend", s: "BaseType_t xQueueSend(QueueHandle_t q, const void *item, TickType_t ticksToWait)", d: "末尾に追加（xQueueSendToBack と同じ）。満杯なら ticksToWait までブロック。", isr: "xQueueSendFromISR(q, item, &woken)" },
+  { n: "xQueueSendToFront", s: "BaseType_t xQueueSendToFront(QueueHandle_t q, const void *item, TickType_t ticksToWait)", d: "先頭に割り込ませて追加。緊急メッセージ用。", isr: "xQueueSendToFrontFromISR(q, item, &woken)" },
+  { n: "xQueueReceive", s: "BaseType_t xQueueReceive(QueueHandle_t q, void *buf, TickType_t ticksToWait)", d: "先頭を取り出して buf にコピー。空なら ticksToWait までブロック。", isr: "xQueueReceiveFromISR(q, buf, &woken)" },
+  { n: "xQueuePeek", s: "BaseType_t xQueuePeek(QueueHandle_t q, void *buf, TickType_t ticksToWait)", d: "先頭を取り除かずに読む。", isr: "xQueuePeekFromISR(q, buf)" },
+  { n: "xQueueOverwrite", s: "BaseType_t xQueueOverwrite(QueueHandle_t q, const void *item)", d: "満杯でも上書きして書き込む。長さ 1 のキュー専用（最新値メールボックス）。", isr: "xQueueOverwriteFromISR(q, item, &woken)" },
+  { n: "uxQueueMessagesWaiting", s: "UBaseType_t uxQueueMessagesWaiting(QueueHandle_t q)", d: "格納済みの要素数。", isr: "uxQueueMessagesWaitingFromISR" },
+  { n: "uxQueueSpacesAvailable", s: "UBaseType_t uxQueueSpacesAvailable(QueueHandle_t q)", d: "空き要素数。", isr: "no" },
+  { n: "xQueueReset", s: "BaseType_t xQueueReset(QueueHandle_t q)", d: "中身を全て捨てて空にする。", isr: "no" },
+  { n: "vQueueDelete", s: "void vQueueDelete(QueueHandle_t q)", d: "キューを破棄。待っているタスクがいる状態で消してはいけない。", isr: "no" },
+  { n: "xQueueCreateSet", s: "QueueSetHandle_t xQueueCreateSet(UBaseType_t eventQueueLength)\nBaseType_t xQueueAddToSet(QueueSetMemberHandle_t member, QueueSetHandle_t set)\nQueueSetMemberHandle_t xQueueSelectFromSet(QueueSetHandle_t set, TickType_t ticksToWait)", d: "複数のキュー/セマフォをまとめて待つキューセット。Select が返したメンバーから必ず受信すること。", isr: "no", cfg: "configUSE_QUEUE_SETS" },
+]},
+{ id: "sem", title: "セマフォ", hdr: "semphr.h",
+  note: "Take / Give はバイナリ・カウンティング・ミューテックスで共通。バイナリセマフォは優先度継承なし（通知・同期用）。排他にはミューテックスを使う。",
+  apis: [
+  { n: "xSemaphoreCreateBinary", s: "SemaphoreHandle_t xSemaphoreCreateBinary(void)", d: "バイナリセマフォを生成。初期状態は「空」（先に Give しないと Take できない）。", isr: "no" },
+  { n: "xSemaphoreCreateCounting", s: "SemaphoreHandle_t xSemaphoreCreateCounting(UBaseType_t maxCount, UBaseType_t initialCount)", d: "カウンティングセマフォを生成。イベント回数の計数やリソース個数の管理に使う。", isr: "no", cfg: "configUSE_COUNTING_SEMAPHORES" },
+  { n: "xSemaphoreTake", s: "BaseType_t xSemaphoreTake(SemaphoreHandle_t s, TickType_t ticksToWait)", d: "取得。取れなければ ticksToWait までブロック。タイムアウトで pdFALSE（戻り値を必ず確認）。", isr: "xSemaphoreTakeFromISR(s, &woken)" },
+  { n: "xSemaphoreGive", s: "BaseType_t xSemaphoreGive(SemaphoreHandle_t s)", d: "解放。既に満杯なら pdFALSE。", isr: "xSemaphoreGiveFromISR(s, &woken)" },
+  { n: "uxSemaphoreGetCount", s: "UBaseType_t uxSemaphoreGetCount(SemaphoreHandle_t s)", d: "現在のカウント（バイナリなら 0 か 1）。" },
+  { n: "vSemaphoreDelete", s: "void vSemaphoreDelete(SemaphoreHandle_t s)", d: "破棄。待ちタスクがいる状態で消してはいけない。", isr: "no" },
+  { n: "xSemaphoreCreateBinaryStatic", s: "SemaphoreHandle_t xSemaphoreCreateBinaryStatic(StaticSemaphore_t *buf)\nSemaphoreHandle_t xSemaphoreCreateCountingStatic(UBaseType_t max, UBaseType_t initial, StaticSemaphore_t *buf)\nSemaphoreHandle_t xSemaphoreCreateMutexStatic(StaticSemaphore_t *buf)", d: "静的確保版。", isr: "no", cfg: "configSUPPORT_STATIC_ALLOCATION" },
+]},
+{ id: "mutex", title: "ミューテックス", hdr: "semphr.h",
+  note: "優先度継承あり。取ったタスクが必ず返す。割り込みからは使えない。保持したまま長くブロックしない。",
+  apis: [
+  { n: "xSemaphoreCreateMutex", s: "SemaphoreHandle_t xSemaphoreCreateMutex(void)", d: "ミューテックスを生成。初期状態は「取得可能」。取得/解放は xSemaphoreTake / xSemaphoreGive。", isr: "no", cfg: "configUSE_MUTEXES" },
+  { n: "xSemaphoreCreateRecursiveMutex", s: "SemaphoreHandle_t xSemaphoreCreateRecursiveMutex(void)", d: "同一タスクが重ねて取得できる再帰ミューテックス。Take した回数だけ Give が必要。", isr: "no", cfg: "configUSE_RECURSIVE_MUTEXES" },
+  { n: "xSemaphoreTakeRecursive", s: "BaseType_t xSemaphoreTakeRecursive(SemaphoreHandle_t m, TickType_t ticksToWait)\nBaseType_t xSemaphoreGiveRecursive(SemaphoreHandle_t m)", d: "再帰ミューテックス専用の取得/解放。通常の Take/Give と混ぜてはいけない。", isr: "no", cfg: "configUSE_RECURSIVE_MUTEXES" },
+  { n: "xSemaphoreGetMutexHolder", s: "TaskHandle_t xSemaphoreGetMutexHolder(SemaphoreHandle_t m)", d: "保持しているタスクを返す（誰も持っていなければ NULL）。デバッグ・アサート用。", isr: "xSemaphoreGetMutexHolderFromISR", cfg: "INCLUDE_xSemaphoreGetMutexHolder" },
+]},
+{ id: "notify", title: "タスク通知", hdr: "task.h",
+  note: "各タスクが持つ 32bit の通知値を使った軽量な同期。オブジェクト生成が不要で速いが、受け手は 1 タスクに固定され、送り手側は満杯でブロックできない。",
+  apis: [
+  { n: "xTaskNotifyGive", s: "BaseType_t xTaskNotifyGive(TaskHandle_t task)", d: "通知値を +1 する。ulTaskNotifyTake と対で軽量セマフォとして使う。", isr: "vTaskNotifyGiveFromISR(task, &woken)", cfg: "configUSE_TASK_NOTIFICATIONS" },
+  { n: "ulTaskNotifyTake", s: "uint32_t ulTaskNotifyTake(BaseType_t clearOnExit, TickType_t ticksToWait)", d: "通知値が 0 でなくなるまで待つ。clearOnExit=pdTRUE で 0 にクリア（バイナリ的）、pdFALSE で -1（カウンティング的）。戻り値は変更前の値で、0 ならタイムアウト。", isr: "no" },
+  { n: "xTaskNotify", s: "BaseType_t xTaskNotify(TaskHandle_t task, uint32_t value, eNotifyAction action)", d: "値付きで通知。action: eNoAction / eSetBits / eIncrement / eSetValueWithOverwrite / eSetValueWithoutOverwrite（未読があれば pdFAIL）。", isr: "xTaskNotifyFromISR(task, value, action, &woken)" },
+  { n: "xTaskNotifyWait", s: "BaseType_t xTaskNotifyWait(uint32_t clearOnEntry, uint32_t clearOnExit,\n                           uint32_t *outValue, TickType_t ticksToWait)", d: "通知を待って値を受け取る。clearOnEntry/Exit は待つ前/戻る前にクリアするビットマスク。タイムアウトで pdFALSE。", isr: "no" },
+  { n: "xTaskNotifyStateClear", s: "BaseType_t xTaskNotifyStateClear(TaskHandle_t task)\nuint32_t ulTaskNotifyValueClear(TaskHandle_t task, uint32_t bitsToClear)", d: "保留中の通知状態、または通知値の指定ビットをクリア。", isr: "no" },
+  { n: "xTaskNotifyIndexed", s: "xTaskNotifyGiveIndexed(task, index) / ulTaskNotifyTakeIndexed(index, clearOnExit, ticks)\nxTaskNotifyIndexed(task, index, value, action) / xTaskNotifyWaitIndexed(index, ...)", d: "タスクごとに複数の通知スロットを持たせる版。無印 API は index 0 を使う。", cfg: "configTASK_NOTIFICATION_ARRAY_ENTRIES" },
+]},
+{ id: "event", title: "イベントグループ", hdr: "event_groups.h",
+  note: "複数ビットの AND / OR 待ちができる。使えるのは下位 24bit（TickType_t が 32bit のとき）。上位 8bit は内部用。",
+  apis: [
+  { n: "xEventGroupCreate", s: "EventGroupHandle_t xEventGroupCreate(void)", d: "イベントグループを生成。全ビット 0 で始まる。静的版は xEventGroupCreateStatic。", isr: "no" },
+  { n: "xEventGroupSetBits", s: "EventBits_t xEventGroupSetBits(EventGroupHandle_t eg, EventBits_t bits)", d: "ビットを立て、待ち条件を満たしたタスクを全て起こす。", isr: "xEventGroupSetBitsFromISR(eg, bits, &woken)" },
+  { n: "xEventGroupWaitBits", s: "EventBits_t xEventGroupWaitBits(EventGroupHandle_t eg, EventBits_t bitsToWaitFor,\n                                BaseType_t clearOnExit, BaseType_t waitForAllBits, TickType_t ticksToWait)", d: "ビットを待つ。waitForAllBits=pdTRUE で AND、pdFALSE で OR。タイムアウトでも値が返るので、戻り値のビットを必ず自分で判定する。", isr: "no" },
+  { n: "xEventGroupClearBits", s: "EventBits_t xEventGroupClearBits(EventGroupHandle_t eg, EventBits_t bits)", d: "ビットを下ろす。戻り値はクリア前の値。", isr: "xEventGroupClearBitsFromISR(eg, bits)" },
+  { n: "xEventGroupGetBits", s: "EventBits_t xEventGroupGetBits(EventGroupHandle_t eg)", d: "現在のビットを読む。", isr: "xEventGroupGetBitsFromISR(eg)" },
+  { n: "xEventGroupSync", s: "EventBits_t xEventGroupSync(EventGroupHandle_t eg, EventBits_t bitsToSet,\n                            EventBits_t bitsToWaitFor, TickType_t ticksToWait)", d: "自分のビットを立てつつ全員ぶんが揃うのを待つ（ランデブー）。複数タスクの足並みを揃える用途。", isr: "no" },
+  { n: "vEventGroupDelete", s: "void vEventGroupDelete(EventGroupHandle_t eg)", d: "破棄。待っていたタスクは 0 を受け取って起きる。", isr: "no" },
+]},
+{ id: "timer", title: "ソフトウェアタイマー", hdr: "timers.h",
+  note: "コールバックはタイマーデーモンタスクの文脈で走る。中でブロックしてはいけない。Start/Stop などはコマンドキュー経由なので、反映は即時ではない。configUSE_TIMERS=1 が必要。",
+  apis: [
+  { n: "xTimerCreate", s: "TimerHandle_t xTimerCreate(const char *name, TickType_t period, BaseType_t autoReload,\n                           void *timerID, TimerCallbackFunction_t callback)", d: "タイマーを生成（停止状態）。autoReload=pdTRUE で周期、pdFALSE でワンショット。period は 1 以上。", isr: "no", cfg: "configUSE_TIMERS" },
+  { n: "xTimerStart", s: "BaseType_t xTimerStart(TimerHandle_t t, TickType_t ticksToWait)", d: "開始。動作中なら期限を再計算（Reset と同じ）。ticksToWait はコマンドキュー満杯時の待ち時間。", isr: "xTimerStartFromISR(t, &woken)" },
+  { n: "xTimerStop", s: "BaseType_t xTimerStop(TimerHandle_t t, TickType_t ticksToWait)", d: "停止。", isr: "xTimerStopFromISR(t, &woken)" },
+  { n: "xTimerReset", s: "BaseType_t xTimerReset(TimerHandle_t t, TickType_t ticksToWait)", d: "現時点から period を数え直す。停止中なら開始する。ウォッチドッグ的な使い方に。", isr: "xTimerResetFromISR(t, &woken)" },
+  { n: "xTimerChangePeriod", s: "BaseType_t xTimerChangePeriod(TimerHandle_t t, TickType_t newPeriod, TickType_t ticksToWait)", d: "周期を変更。停止中のタイマーはこれで開始される。", isr: "xTimerChangePeriodFromISR(t, newPeriod, &woken)" },
+  { n: "pvTimerGetTimerID", s: "void *pvTimerGetTimerID(TimerHandle_t t)\nvoid vTimerSetTimerID(TimerHandle_t t, void *newID)", d: "タイマーに紐づけた任意ポインタの取得/設定。コールバックを共用するときの識別やコンテキスト渡しに使う。" },
+  { n: "xTimerIsTimerActive", s: "BaseType_t xTimerIsTimerActive(TimerHandle_t t)", d: "動作中なら pdTRUE 相当（0 以外）。" },
+  { n: "xTimerPendFunctionCall", s: "BaseType_t xTimerPendFunctionCall(PendedFunction_t fn, void *p1, uint32_t p2, TickType_t ticksToWait)", d: "関数の実行をタイマーデーモンタスクに委譲する。割り込み処理の後半をタスク文脈へ逃がす用途。", isr: "xTimerPendFunctionCallFromISR(fn, p1, p2, &woken)", cfg: "INCLUDE_xTimerPendFunctionCall" },
+  { n: "xTimerDelete", s: "BaseType_t xTimerDelete(TimerHandle_t t, TickType_t ticksToWait)", d: "破棄。", isr: "no" },
+]},
+{ id: "buffer", title: "ストリーム / メッセージバッファ", hdr: "stream_buffer.h / message_buffer.h",
+  note: "書き手 1・読み手 1 が前提（複数なら呼び出し側で排他する）。ストリームはバイト列、メッセージは長さ付きの可変長データ。",
+  apis: [
+  { n: "xStreamBufferCreate", s: "StreamBufferHandle_t xStreamBufferCreate(size_t sizeBytes, size_t triggerLevelBytes)", d: "バイトストリームを生成。triggerLevel は読み手を起こすのに必要な最小バイト数。", isr: "no" },
+  { n: "xStreamBufferSend", s: "size_t xStreamBufferSend(StreamBufferHandle_t sb, const void *data, size_t len, TickType_t ticksToWait)", d: "書き込み。戻り値は実際に書けたバイト数（len 未満があり得る）。", isr: "xStreamBufferSendFromISR(sb, data, len, &woken)" },
+  { n: "xStreamBufferReceive", s: "size_t xStreamBufferReceive(StreamBufferHandle_t sb, void *buf, size_t maxLen, TickType_t ticksToWait)", d: "読み出し。戻り値は実際に読めたバイト数。", isr: "xStreamBufferReceiveFromISR(sb, buf, maxLen, &woken)" },
+  { n: "xStreamBufferBytesAvailable", s: "size_t xStreamBufferBytesAvailable(StreamBufferHandle_t sb)\nsize_t xStreamBufferSpacesAvailable(StreamBufferHandle_t sb)", d: "読める量 / 書ける空き。" },
+  { n: "xMessageBufferCreate", s: "MessageBufferHandle_t xMessageBufferCreate(size_t sizeBytes)", d: "可変長メッセージ用バッファを生成。1 メッセージごとに長さ情報ぶん（通常 4 バイト）余分に消費する。", isr: "no" },
+  { n: "xMessageBufferSend", s: "size_t xMessageBufferSend(MessageBufferHandle_t mb, const void *msg, size_t len, TickType_t ticksToWait)", d: "メッセージ 1 個を丸ごと書く。入りきらなければ 0（部分書き込みはしない）。", isr: "xMessageBufferSendFromISR(mb, msg, len, &woken)" },
+  { n: "xMessageBufferReceive", s: "size_t xMessageBufferReceive(MessageBufferHandle_t mb, void *buf, size_t bufLen, TickType_t ticksToWait)", d: "メッセージ 1 個を読む。buf が小さくて入らない場合は 0 を返し、メッセージは残る。", isr: "xMessageBufferReceiveFromISR(mb, buf, bufLen, &woken)" },
+]},
+{ id: "critical", title: "クリティカルセクション・スケジューラ制御", hdr: "task.h",
+  note: "割り込み禁止は最小限の時間に。禁止中・スケジューラ停止中にブロックする API を呼んではいけない。",
+  apis: [
+  { n: "taskENTER_CRITICAL", s: "taskENTER_CRITICAL()\ntaskEXIT_CRITICAL()", d: "割り込みを禁止して排他する（ネスト可）。SMP では他コアも待たされる。数命令〜短い処理だけに使う。", isr: "taskENTER_CRITICAL_FROM_ISR()" },
+  { n: "taskENTER_CRITICAL_FROM_ISR", s: "UBaseType_t saved = taskENTER_CRITICAL_FROM_ISR();\ntaskEXIT_CRITICAL_FROM_ISR(saved);", d: "割り込みハンドラ内でのクリティカルセクション。戻り値を EXIT に渡して元の状態へ戻す。" },
+  { n: "vTaskSuspendAll", s: "void vTaskSuspendAll(void)\nBaseType_t xTaskResumeAll(void)", d: "タスク切り替えだけを止める（割り込みは動く）。長めの処理を割り込み禁止なしで守れるが、割り込みとの排他にはならない。", isr: "no" },
+  { n: "taskDISABLE_INTERRUPTS", s: "taskDISABLE_INTERRUPTS()\ntaskENABLE_INTERRUPTS()", d: "割り込みの禁止/許可（ネスト管理なし）。通常は taskENTER_CRITICAL を使う。" },
+]},
+{ id: "isr", title: "割り込みからの利用", hdr: "ルール",
+  note: "割り込みハンドラから呼べるのは名前が FromISR で終わる API だけ。ブロックはできない（待ち時間の引数がない）。",
+  apis: [
+  { n: "portYIELD_FROM_ISR", s: "BaseType_t woken = pdFALSE;\nxQueueSendFromISR(q, &item, &woken);   // 何回呼んでも同じ woken を渡す\nportYIELD_FROM_ISR(woken);             // ハンドラの最後に 1 回", d: "FromISR 版がより高優先度のタスクを起こした場合に woken が pdTRUE になる。最後に portYIELD_FROM_ISR へ渡すと、割り込み復帰時にそのタスクへ切り替わる。渡さないと次の tick まで切り替わらない。" },
+  { n: "configMAX_SYSCALL_INTERRUPT_PRIORITY", s: "configMAX_SYSCALL_INTERRUPT_PRIORITY", d: "これより高い優先度の割り込みはクリティカルセクションでも止まらない代わりに、FreeRTOS API を一切呼べない。Cortex-M は数値が小さいほど高優先度なので取り違えに注意。" },
+  { n: "ISRで使えないもの", s: "ミューテックスの取得/解放、vTaskDelay、xEventGroupWaitBits、無印の全ブロッキング API", d: "ミューテックスは「保持タスク」の概念があるため割り込みから使えない。割り込み→タスクの通知には、タスク通知・バイナリセマフォ・キューを使う。" },
+  { n: "イベントグループとタイマーのFromISR", s: "xEventGroupSetBitsFromISR / xTimer...FromISR", d: "その場では実行されず、タイマーデーモンタスクへコマンドを送るだけ。反映はデーモンタスクが走った時点になるので、その優先度に遅延が左右される。", cfg: "configUSE_TIMERS" },
+]},
+{ id: "mem", title: "メモリ", hdr: "portable.h",
+  note: "ヒープ実装は heap_1〜5 から 1 つ選ぶ。heap_1: 解放不可 / heap_2: 解放可・結合なし / heap_3: 標準 malloc のラップ / heap_4: 解放可・隣接結合あり（定番）/ heap_5: heap_4 の複数領域版。",
+  apis: [
+  { n: "pvPortMalloc", s: "void *pvPortMalloc(size_t size)\nvoid vPortFree(void *p)", d: "FreeRTOS ヒープからの確保/解放。スケジューラを止めて排他するのでタスク間で安全。", isr: "no" },
+  { n: "xPortGetFreeHeapSize", s: "size_t xPortGetFreeHeapSize(void)", d: "現在のヒープ空き（バイト）。断片化は分からない。heap_3 では使えない。" },
+  { n: "xPortGetMinimumEverFreeHeapSize", s: "size_t xPortGetMinimumEverFreeHeapSize(void)", d: "起動以来の最小空き。configTOTAL_HEAP_SIZE の見積もり確認に使う。heap_4 / heap_5 のみ。" },
+  { n: "vApplicationGetIdleTaskMemory", s: "void vApplicationGetIdleTaskMemory(StaticTask_t **tcb, StackType_t **stack, configSTACK_DEPTH_TYPE *stackSize)\nvoid vApplicationGetTimerTaskMemory(StaticTask_t **tcb, StackType_t **stack, configSTACK_DEPTH_TYPE *stackSize)", d: "静的確保を有効にしたとき、idle / タイマータスク用メモリをアプリが提供するコールバック。configKERNEL_PROVIDED_STATIC_MEMORY=1 ならカーネルが用意するので不要。SMP では vApplicationGetPassiveIdleTaskMemory も必要。", cfg: "configSUPPORT_STATIC_ALLOCATION" },
+]},
+{ id: "debug", title: "診断・フック", hdr: "task.h / FreeRTOSConfig.h",
+  note: "開発中は configASSERT とスタックオーバーフロー検出を必ず有効にする。",
+  apis: [
+  { n: "uxTaskGetStackHighWaterMark", s: "UBaseType_t uxTaskGetStackHighWaterMark(TaskHandle_t task)", d: "スタック残量の過去最小値（ワード単位）。0 に近いほど危険。スタックサイズを実測で詰めるときに使う。", cfg: "INCLUDE_uxTaskGetStackHighWaterMark" },
+  { n: "vApplicationStackOverflowHook", s: "void vApplicationStackOverflowHook(TaskHandle_t task, char *name)", d: "スタックオーバーフロー検出時に呼ばれる。検出はコンテキストスイッチ時なので、既にメモリが壊れた後である点に注意。方式 2 のほうが検出率が高い。", cfg: "configCHECK_FOR_STACK_OVERFLOW" },
+  { n: "vApplicationMallocFailedHook", s: "void vApplicationMallocFailedHook(void)", d: "pvPortMalloc が失敗したときに呼ばれる。", cfg: "configUSE_MALLOC_FAILED_HOOK" },
+  { n: "vApplicationIdleHook", s: "void vApplicationIdleHook(void)", d: "idle タスクのループごとに呼ばれる。ブロック禁止。省電力処理などに使う。", cfg: "configUSE_IDLE_HOOK" },
+  { n: "vApplicationTickHook", s: "void vApplicationTickHook(void)", d: "tick 割り込みごとに呼ばれる。割り込み文脈なので短く、FromISR 版 API のみ使用可。", cfg: "configUSE_TICK_HOOK" },
+  { n: "configASSERT", s: "#define configASSERT(x)  if (!(x)) { /* 停止処理 */ }", d: "カーネル内部の引数・状態チェック。NULL ハンドルや割り込み優先度の設定ミスなどを早期に捕まえる。" },
+  { n: "vTaskList", s: "void vTaskList(char *buf)", d: "全タスクの名前・状態・優先度・スタック残量・番号を表形式の文字列で出力。重い処理なのでデバッグ専用。buf はタスク 1 個あたり約 40 バイト必要。", isr: "no", cfg: "configUSE_TRACE_FACILITY + configUSE_STATS_FORMATTING_FUNCTIONS" },
+  { n: "vTaskGetRunTimeStats", s: "void vTaskGetRunTimeStats(char *buf)", d: "タスクごとの CPU 使用時間と割合を文字列で出力。", isr: "no", cfg: "configGENERATE_RUN_TIME_STATS" },
+  { n: "uxTaskGetSystemState", s: "UBaseType_t uxTaskGetSystemState(TaskStatus_t *array, UBaseType_t arraySize, configRUN_TIME_COUNTER_TYPE *totalRunTime)", d: "全タスクの状態を構造体配列で取得。vTaskList の元データ。", isr: "no", cfg: "configUSE_TRACE_FACILITY" },
+  { n: "uxTaskGetNumberOfTasks", s: "UBaseType_t uxTaskGetNumberOfTasks(void)", d: "現在のタスク数（idle などを含む）。" },
+]},
+{ id: "smp", title: "SMP（マルチコア）", hdr: "task.h",
+  note: "configNUMBER_OF_CORES > 1 のときのみ。同優先度でなくても複数タスクが同時に走るため、「優先度が高いから割り込まれない」という前提は成り立たない。",
+  apis: [
+  { n: "vTaskCoreAffinitySet", s: "void vTaskCoreAffinitySet(TaskHandle_t task, UBaseType_t coreMask)\nUBaseType_t vTaskCoreAffinityGet(TaskHandle_t task)", d: "タスクを走らせてよいコアをビットマスクで指定（bit0 = コア 0）。", isr: "no", cfg: "configUSE_CORE_AFFINITY" },
+  { n: "xTaskCreateAffinitySet", s: "BaseType_t xTaskCreateAffinitySet(TaskFunction_t fn, const char *name, configSTACK_DEPTH_TYPE stackDepth,\n                                  void *param, UBaseType_t prio, UBaseType_t coreMask, TaskHandle_t *outHandle)", d: "コア指定つきでタスクを生成。生成直後に意図しないコアで走るのを防げる。", isr: "no", cfg: "configUSE_CORE_AFFINITY" },
+  { n: "vTaskPreemptionDisable", s: "void vTaskPreemptionDisable(TaskHandle_t task)\nvoid vTaskPreemptionEnable(TaskHandle_t task)", d: "特定タスクだけプリエンプトされないようにする。", isr: "no", cfg: "configUSE_TASK_PREEMPTION_DISABLE" },
+  { n: "configRUN_MULTIPLE_PRIORITIES", s: "configRUN_MULTIPLE_PRIORITIES", d: "0 にすると、異なる優先度のタスクは同時に走らない（シングルコア前提のコードを動かしやすい）。1 で本来の並列実行。" },
+  { n: "portGET_CORE_ID", s: "portGET_CORE_ID()", d: "実行中のコア番号。タスクは次の瞬間に別コアへ移り得るので、値を保持して使うときは注意。" },
+  { n: "Pico SDK 連携設定", s: "configSUPPORT_PICO_SYNC_INTEROP\nconfigSUPPORT_PICO_TIME_INTEROP", d: "RP2040 / RP2350 ポート固有。1 にすると、pico-sdk の mutex や sleep_ms などがビジーウェイトではなく FreeRTOS のブロックとして動く。" },
+]},
+];
+
+const content = document.getElementById("content");
+const toc = document.getElementById("toc");
+const empty = document.getElementById("empty");
+const q = document.getElementById("q");
+
+function el(tag, cls, text) {
+  const e = document.createElement(tag);
+  if (cls) e.className = cls;
+  if (text !== undefined) e.textContent = text;
+  return e;
+}
+
+for (const sec of DATA) {
+  const link = el("a");
+  link.href = "#" + sec.id;
+  link.append(el("span", "n", String(sec.apis.length)), sec.title);
+  link.dataset.sec = sec.id;
+  toc.append(link);
+
+  const s = el("section");
+  s.id = sec.id;
+  const h = el("h2", null, sec.title);
+  h.append(el("small", null, sec.hdr));
+  s.append(h);
+  if (sec.note) s.append(el("p", "note", sec.note));
+
+  for (const a of sec.apis) {
+    const card = el("div", "api");
+    card.id = a.n;
+    card.dataset.text = (a.n + " " + a.s + " " + a.d + " " + (a.isr || "") + " " + (a.cfg || "")).toLowerCase();
+    const top = el("div", "top");
+    const name = el("a", "name", a.n);
+    name.href = "#" + encodeURIComponent(a.n);
+    top.append(name);
+    if (a.isr === "no") top.append(el("span", "badge b-no", "ISR不可"));
+    else if (a.isr) top.append(el("span", "badge b-isr", "ISR版: " + a.isr));
+    if (a.cfg) top.append(el("span", "badge b-cfg", a.cfg));
+    card.append(top, el("code", "sig", a.s), el("p", "desc", a.d));
+    s.append(card);
+  }
+  content.append(s);
+}
+
+function filter() {
+  const words = q.value.toLowerCase().split(/\s+/).filter(Boolean);
+  let total = 0;
+  for (const s of content.querySelectorAll("section")) {
+    let shown = 0;
+    for (const card of s.querySelectorAll(".api")) {
+      const ok = words.every(w => card.dataset.text.includes(w));
+      card.style.display = ok ? "" : "none";
+      if (ok) shown++;
+    }
+    s.style.display = shown ? "" : "none";
+    toc.querySelector('[data-sec="' + s.id + '"]').style.display = shown ? "" : "none";
+    total += shown;
+  }
+  empty.style.display = total ? "none" : "block";
+}
+
+function firstVisible() {
+  for (const card of content.querySelectorAll(".api")) {
+    if (card.style.display !== "none") return card;
+  }
+  return null;
+}
+
+q.addEventListener("input", filter);
+q.addEventListener("keydown", e => {
+  if (e.key === "Enter") {
+    const card = firstVisible();
+    if (card) { location.hash = encodeURIComponent(card.id); q.blur(); }
+  } else if (e.key === "Escape") {
+    q.value = ""; filter(); q.blur();
+  }
+});
+document.addEventListener("keydown", e => {
+  if (e.key === "/" && document.activeElement !== q) { e.preventDefault(); q.focus(); q.select(); }
+});
+
+if (location.hash) {
+  const target = document.getElementById(decodeURIComponent(location.hash.slice(1)));
+  if (target) target.scrollIntoView();
+}
+</script>
+</body>
+</html>
