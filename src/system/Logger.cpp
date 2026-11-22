@@ -1,5 +1,5 @@
 #include "Logger.h"
-#include "ComModule.h"
+#include "communication/ComModule.h"
 #include "projdefs.h"
 #include <cstdarg>
 #include <hardware/timer.h>
@@ -89,7 +89,7 @@ void Logger::log(LogLvl level, int line, const char* message, ...) {
 
     va_start(args, message);
     len = snprintf(log_buffer_, sizeof(log_buffer_), "[%u][%s][%d]", 
-        (uint32_t)(time_us_64() / 1000), get_lvl_str(level), line);
+        (unsigned int)(time_us_64() / 1000), get_lvl_str(level), line);
     /* CRLFを書き込む可能性があるから後ろ2バイト空けておく */
     (void)vsniprintf(log_buffer_ + len, sizeof(log_buffer_) - len - 2, message, args);
     va_end(args);
