@@ -1,0 +1,374 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>pico-sdk API 早見表</title>
+<style>
+:root {
+  --bg: #f7f7f4; --panel: #ffffff; --text: #1d1f23; --muted: #646a73;
+  --line: #dedfd9; --accent: #0b6e4f; --accent-bg: #e3f2ec;
+  --warn: #9a4a00; --warn-bg: #fdefdc; --no: #a3262b; --no-bg: #fbe6e6;
+  --cfg: #3b4a8f; --cfg-bg: #e8ebf8; --code-bg: #f0f1ec; --hit: #fff3b0;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #15171a; --panel: #1d2024; --text: #e4e6e9; --muted: #9299a3;
+    --line: #30343a; --accent: #5fd0a5; --accent-bg: #173328;
+    --warn: #f0b36a; --warn-bg: #3a2a14; --no: #f08a8e; --no-bg: #3a1c1e;
+    --cfg: #a9b6f5; --cfg-bg: #232a48; --code-bg: #25292e; --hit: #4a4215;
+  }
+}
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; scroll-padding-top: 72px; }
+body {
+  margin: 0; background: var(--bg); color: var(--text);
+  font: 14px/1.6 system-ui, "Hiragino Sans", "Noto Sans JP", sans-serif;
+}
+code, .sig, .name { font-family: ui-monospace, "Cascadia Code", Consolas, monospace; }
+header {
+  position: sticky; top: 0; z-index: 10; background: var(--panel);
+  border-bottom: 1px solid var(--line); padding: 10px 16px;
+  display: flex; gap: 12px; align-items: center; flex-wrap: wrap;
+}
+header h1 { font-size: 16px; margin: 0; white-space: nowrap; }
+#q {
+  flex: 1; min-width: 180px; max-width: 420px; padding: 7px 10px;
+  border: 1px solid var(--line); border-radius: 6px;
+  background: var(--bg); color: var(--text); font-size: 14px;
+}
+#q:focus { outline: 2px solid var(--accent); outline-offset: 0; }
+.hint { color: var(--muted); font-size: 12px; }
+kbd {
+  border: 1px solid var(--line); border-radius: 4px; padding: 0 5px;
+  font-size: 11px; background: var(--bg);
+}
+.layout { display: grid; grid-template-columns: 200px minmax(0, 1fr); }
+nav {
+  position: sticky; top: 53px; align-self: start; height: calc(100vh - 53px);
+  overflow-y: auto; padding: 14px 8px 14px 16px; border-right: 1px solid var(--line);
+}
+nav a {
+  display: block; padding: 5px 8px; border-radius: 5px;
+  color: var(--text); text-decoration: none; font-size: 13px;
+}
+nav a:hover { background: var(--accent-bg); color: var(--accent); }
+nav a .n { color: var(--muted); font-size: 11px; float: right; }
+main { padding: 8px 16px 80px; min-width: 0; }
+section { margin-top: 26px; }
+section h2 {
+  font-size: 17px; margin: 0 0 2px; padding-bottom: 4px;
+  border-bottom: 2px solid var(--accent);
+}
+section h2 small { font-weight: normal; color: var(--muted); font-size: 12px; margin-left: 8px; }
+.note { color: var(--muted); font-size: 13px; margin: 6px 0 10px; }
+.api {
+  background: var(--panel); border: 1px solid var(--line); border-radius: 6px;
+  padding: 9px 12px; margin-top: 6px;
+}
+.api:target { outline: 2px solid var(--accent); background: var(--hit); }
+.api .top { display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; }
+.name { font-weight: 700; font-size: 14px; color: var(--accent); text-decoration: none; }
+.name:hover { text-decoration: underline; }
+.sig {
+  display: block; background: var(--code-bg); border-radius: 4px;
+  padding: 4px 8px; margin: 5px 0; font-size: 12.5px;
+  overflow-x: auto; white-space: pre;
+}
+.desc { margin: 0; }
+.badge {
+  font-size: 11px; padding: 1px 7px; border-radius: 10px; white-space: nowrap;
+}
+.b-isr { background: var(--warn-bg); color: var(--warn); }
+.b-no { background: var(--no-bg); color: var(--no); }
+.b-ok { background: var(--accent-bg); color: var(--accent); }
+.b-cfg { background: var(--cfg-bg); color: var(--cfg); font-family: ui-monospace, Consolas, monospace; }
+.empty { display: none; padding: 30px 0; color: var(--muted); }
+.legend { margin: 14px 0 0; font-size: 12px; color: var(--muted); display: flex; gap: 12px; flex-wrap: wrap; }
+@media (max-width: 760px) {
+  .layout { display: block; }
+  nav {
+    position: static; height: auto; border-right: 0; border-bottom: 1px solid var(--line);
+    display: flex; gap: 4px; overflow-x: auto; padding: 8px 16px; white-space: nowrap;
+  }
+  nav a .n { display: none; }
+  .hint { display: none; }
+}
+</style>
+</head>
+<body>
+<header>
+  <h1>pico-sdk API 早見表</h1>
+  <input id="q" type="search" placeholder="API名・キーワードで絞り込み" autocomplete="off">
+  <span class="hint"><kbd>/</kbd> 検索　<kbd>Enter</kbd> 先頭へジャンプ　<kbd>Esc</kbd> 解除</span>
+</header>
+<div class="layout">
+  <nav id="toc"></nav>
+  <main>
+    <div class="legend">
+      <span><span class="badge b-ok">ISR可</span> 割り込みから呼んでよい</span>
+      <span><span class="badge b-no">ISR不可</span> 割り込みから呼べない</span>
+      <span><span class="badge b-isr">RTOS注意</span> FreeRTOS 併用時に挙動・文脈に注意</span>
+      <span><span class="badge b-cfg">lib</span> target_link_libraries に必要なライブラリ</span>
+      <span>対象: pico-sdk 2.2.0 / PICO_BOARD=pico2_w（RP2350A）</span>
+    </div>
+    <div id="content"></div>
+    <p class="empty" id="empty">該当する API がありません。</p>
+  </main>
+</div>
+<script>
+const DATA = [
+{ id: "stdio", title: "初期化・stdio", hdr: "pico/stdlib.h / pico/stdio.h",
+  note: "このプロジェクトは CMake で stdio_usb=1 / stdio_uart=0。printf は USB CDC へ出る。stdout は内部の pico mutex で守られるので、割り込みからの printf は不可。",
+  apis: [
+  { n: "stdio_init_all", s: "bool stdio_init_all(void)", d: "CMake で有効にした stdio（USB / UART / RTT）を全て初期化。USB の場合、ホストが接続してくるまで出力は捨てられる。", isr: "no", cfg: "pico_stdlib" },
+  { n: "stdio_usb_connected", s: "bool stdio_usb_connected(void)", d: "ホストが CDC を開いている（DTR 立ち上げ済み）か。起動直後のログ取りこぼし対策で「繋がるまで待つ」ときに使う。", cfg: "pico_stdio_usb" },
+  { n: "PICO_STDIO_USB_CONNECT_WAIT_TIMEOUT_MS", s: "target_compile_definitions(... PICO_STDIO_USB_CONNECT_WAIT_TIMEOUT_MS=3000)", d: "stdio_init_all 内で USB 接続を最大この時間待つ。-1 で無期限。起動ログを確実に見たいときの手段（量産では外す）。", cfg: "pico_stdio_usb" },
+  { n: "getchar_timeout_us", s: "int getchar_timeout_us(uint32_t timeout_us)", d: "1 文字受信。タイムアウトで PICO_ERROR_TIMEOUT（負値）。0 を渡すとポーリング。", isr: "no" },
+  { n: "stdio_set_chars_available_callback", s: "void stdio_set_chars_available_callback(void (*fn)(void *), void *param)", d: "受信データが来たときに呼ばれるコールバックを登録。割り込み文脈で呼ばれ得るので、中ではタスクへ通知するだけにする。", rt: "FromISR で通知" },
+  { n: "stdio_flush", s: "void stdio_flush(void)", d: "出力バッファを吐き出す。リセット直前のログを確実に出したいときに。", isr: "no" },
+  { n: "putchar_raw", s: "int putchar_raw(int c)\nint puts_raw(const char *s)", d: "改行変換（\\n→\\r\\n）を通さずに出力。バイナリを流すときに使う。", isr: "no" },
+  { n: "stdio_set_translate_crlf", s: "void stdio_set_translate_crlf(stdio_driver_t *driver, bool translate)", d: "ドライバ単位で CRLF 変換を切り替える（例: &stdio_usb）。" },
+]},
+{ id: "gpio", title: "GPIO", hdr: "hardware/gpio.h",
+  note: "Pico 2 W のオンボード LED は RP2350 の GPIO ではなく CYW43 側にある（gpio_put では光らない）→「CYW43」節を参照。",
+  apis: [
+  { n: "gpio_init", s: "void gpio_init(uint gpio)", d: "SIO 機能に切り替え、入力・出力値 0 で初期化。gpio_init_mask(mask) で一括。", cfg: "hardware_gpio" },
+  { n: "gpio_set_dir", s: "void gpio_set_dir(uint gpio, bool out)", d: "方向設定。GPIO_OUT(true) / GPIO_IN(false)。複数ピンは gpio_set_dir_out_masked(mask) など。" },
+  { n: "gpio_put", s: "void gpio_put(uint gpio, bool value)", d: "出力値を書く。SIO 経由でアトミックなので割り込み・別コアから叩いても壊れない。", isr: "ok" },
+  { n: "gpio_get", s: "bool gpio_get(uint gpio)", d: "ピンの入力レベルを読む（出力ピンでも実際のレベルが返る）。", isr: "ok" },
+  { n: "gpio_put_masked", s: "void gpio_put_masked(uint32_t mask, uint32_t value)\nvoid gpio_set_mask(uint32_t mask) / gpio_clr_mask / gpio_xor_mask", d: "複数ピンを同時に操作。xor はトグル。", isr: "ok" },
+  { n: "gpio_pull_up", s: "void gpio_pull_up(uint gpio)\nvoid gpio_pull_down(uint gpio)\nvoid gpio_disable_pulls(uint gpio)", d: "内蔵プルアップ/ダウン。ボタンや I2C の簡易プルアップに。" },
+  { n: "gpio_set_function", s: "void gpio_set_function(uint gpio, gpio_function_t fn)", d: "ピン機能の割り当て（GPIO_FUNC_I2C / UART / SPI / PWM / PIO0 …）。ペリフェラル初期化後に必ず呼ぶ。" },
+  { n: "gpio_set_irq_enabled_with_callback", s: "void gpio_set_irq_enabled_with_callback(uint gpio, uint32_t event_mask, bool enabled,\n                                        gpio_irq_callback_t callback)\n// callback: void cb(uint gpio, uint32_t events)", d: "エッジ/レベル割り込みを有効化。event: GPIO_IRQ_EDGE_RISE / EDGE_FALL / LEVEL_HIGH / LEVEL_LOW。コールバックはコアごとに 1 つを全ピンで共有するので、gpio 引数で振り分ける。", rt: "ISR 文脈" },
+  { n: "gpio_set_irq_enabled", s: "void gpio_set_irq_enabled(uint gpio, uint32_t event_mask, bool enabled)", d: "2 本目以降のピンはこちらで有効化（コールバックは共有済みのものが呼ばれる）。" },
+  { n: "gpio_add_raw_irq_handler", s: "void gpio_add_raw_irq_handler(uint gpio, irq_handler_t handler)\nvoid gpio_acknowledge_irq(uint gpio, uint32_t events)", d: "共有コールバックを使わず、ピン専用の生ハンドラを登録。ハンドラ内で acknowledge が必要。ライブラリ同士でコールバックを奪い合わないための手段。" },
+  { n: "gpio_set_drive_strength", s: "void gpio_set_drive_strength(uint gpio, enum gpio_drive_strength drive)\nvoid gpio_set_slew_rate(uint gpio, enum gpio_slew_rate slew)", d: "駆動電流（2/4/8/12mA）とスルーレート。" },
+]},
+{ id: "time", title: "時間・遅延", hdr: "pico/time.h",
+  note: "absolute_time_t は起動からの µs（64bit）。比較は absolute_time_diff_us で行い、直接の大小比較はしない（デバッグビルドでは構造体になる）。",
+  apis: [
+  { n: "sleep_ms", s: "void sleep_ms(uint32_t ms)\nvoid sleep_us(uint64_t us)", d: "指定時間待つ（WFE で低電力待ち）。割り込みからは不可。", isr: "no", rt: "TIME_INTEROP=0 だとブロックしない", cfg: "pico_time" },
+  { n: "sleep_until", s: "void sleep_until(absolute_time_t target)", d: "絶対時刻まで待つ。周期実行のずれ防止に。", isr: "no", rt: "TIME_INTEROP=0 だとブロックしない" },
+  { n: "busy_wait_us", s: "void busy_wait_us(uint64_t us)\nvoid busy_wait_ms(uint32_t ms)\nvoid busy_wait_until(absolute_time_t t)", d: "純粋なビジーループ。µs オーダーの短いタイミング調整（センサのリセットパルスなど）専用。割り込みから呼べるが長時間は禁物。", isr: "ok" },
+  { n: "get_absolute_time", s: "absolute_time_t get_absolute_time(void)", d: "現在時刻。", isr: "ok" },
+  { n: "time_us_64", s: "uint64_t time_us_64(void)\nuint32_t time_us_32(void)", d: "タイマーの生カウンタ（µs）。32bit 版は約 71 分で一周する。", isr: "ok", cfg: "hardware_timer" },
+  { n: "to_ms_since_boot", s: "uint32_t to_ms_since_boot(absolute_time_t t)\nuint64_t to_us_since_boot(absolute_time_t t)", d: "absolute_time_t を数値へ。ログのタイムスタンプに。ms 版は約 49 日で一周。", isr: "ok" },
+  { n: "absolute_time_diff_us", s: "int64_t absolute_time_diff_us(absolute_time_t from, absolute_time_t to)", d: "to - from を符号付き µs で返す。処理時間の計測に。", isr: "ok" },
+  { n: "make_timeout_time_ms", s: "absolute_time_t make_timeout_time_ms(uint32_t ms)\nabsolute_time_t make_timeout_time_us(uint64_t us)", d: "「今から ms 後」の絶対時刻。time_reached と組み合わせてタイムアウト判定。", isr: "ok" },
+  { n: "time_reached", s: "bool time_reached(absolute_time_t t)", d: "その時刻を過ぎたか。", isr: "ok" },
+  { n: "delayed_by_ms", s: "absolute_time_t delayed_by_ms(absolute_time_t t, uint32_t ms)\nabsolute_time_t delayed_by_us(absolute_time_t t, uint64_t us)", d: "時刻に加算。sleep_until と合わせて周期の基準時刻を進める。", isr: "ok" },
+  { n: "nil_time / at_the_end_of_time", s: "nil_time\nat_the_end_of_time\nbool is_nil_time(absolute_time_t t)", d: "「未設定」と「無期限」を表す番兵値。" },
+]},
+{ id: "alarm", title: "アラーム・リピーティングタイマー", hdr: "pico/time.h",
+  note: "コールバックはハードウェアタイマーの割り込み文脈で走る。中でブロック・printf・長い処理をしない。FreeRTOS 併用時は FromISR 系で通知してタスクへ逃がす（周期処理自体は FreeRTOS タイマー/xTaskDelayUntil が素直）。",
+  apis: [
+  { n: "add_alarm_in_ms", s: "alarm_id_t add_alarm_in_ms(uint32_t ms, alarm_callback_t cb, void *user_data, bool fire_if_past)\n// cb: int64_t cb(alarm_id_t id, void *user_data)", d: "ワンショットアラーム。戻り値 >0 が ID、0 は「既に過ぎていて登録しなかった」、<0 はスロット不足。cb の戻り値: 0=終了、>0=今から µs 後に再発火、<0=前回予定時刻から |値| µs 後に再発火。", rt: "ISR 文脈", cfg: "pico_time" },
+  { n: "add_alarm_at", s: "alarm_id_t add_alarm_at(absolute_time_t time, alarm_callback_t cb, void *user_data, bool fire_if_past)\nalarm_id_t add_alarm_in_us(uint64_t us, ...)", d: "絶対時刻 / µs 指定版。", rt: "ISR 文脈" },
+  { n: "cancel_alarm", s: "bool cancel_alarm(alarm_id_t id)", d: "取り消し。既に発火済みなら false。" },
+  { n: "add_repeating_timer_ms", s: "bool add_repeating_timer_ms(int32_t delay_ms, repeating_timer_callback_t cb, void *user_data,\n                            repeating_timer_t *out)\n// cb: bool cb(repeating_timer_t *rt)  → true で継続", d: "周期タイマー。delay_ms > 0 は「前回終了→次回開始」の間隔、< 0 は「開始→開始」の間隔（周期を守りたいなら負値）。out は停止まで生存させる（ローカル変数は不可）。", rt: "ISR 文脈" },
+  { n: "cancel_repeating_timer", s: "bool cancel_repeating_timer(repeating_timer_t *timer)", d: "周期タイマー停止。" },
+  { n: "alarm_pool_create", s: "alarm_pool_t *alarm_pool_create(uint timer_alarm_num, uint max_timers)", d: "独立したアラームプール（別のハードウェアアラーム）を作る。デフォルトプールはコア 0 の割り込みで処理される。" },
+]},
+{ id: "adc", title: "ADC・内蔵温度センサ", hdr: "hardware/adc.h",
+  note: "12bit（0〜4095）、基準 3.3V。Pico 2 W（RP2350A）の温度センサは ADC_TEMPERATURE_CHANNEL_NUM（= 4）。ADC は 1 個を全チャネルで共有するので、select と read の間は排他が必要。",
+  apis: [
+  { n: "adc_init", s: "void adc_init(void)", d: "ADC ブロックをリセットして有効化。最初に 1 回。", cfg: "hardware_adc" },
+  { n: "adc_gpio_init", s: "void adc_gpio_init(uint gpio)", d: "GPIO26〜29 をアナログ入力化（デジタル機能とプルを切る）。Pico 2 W では GPIO29 は VSYS/3 測定と CYW43 の SPI クロックを兼ねるため、Wi-Fi 使用中は読めない（GPIO23〜25 も CYW43 が使用）。" },
+  { n: "adc_select_input", s: "void adc_select_input(uint input)", d: "変換するチャネルを選ぶ（GPIO26=0 … GPIO29=3、温度センサ=4）。" },
+  { n: "adc_set_temp_sensor_enabled", s: "void adc_set_temp_sensor_enabled(bool enable)", d: "温度センサのバイアスを入れる。select する前に有効化。" },
+  { n: "adc_read", s: "uint16_t adc_read(void)", d: "1 回変換して結果を返す（約 2µs のポーリング）。", isr: "ok" },
+  { n: "温度換算", s: "float v = raw * 3.3f / 4096.0f;\nfloat t_c = 27.0f - (v - 0.706f) / 0.001721f;", d: "データシート記載の換算式。個体差・基準電圧の誤差が大きく、±数℃ずれる前提で扱う。精度が要るなら校正か外付けセンサ。" },
+  { n: "adc_set_round_robin", s: "void adc_set_round_robin(uint input_mask)", d: "連続変換時に巡回するチャネルをビットマスクで指定。0 で無効。" },
+  { n: "adc_fifo_setup", s: "void adc_fifo_setup(bool en, bool dreq_en, uint16_t dreq_thresh, bool err_in_fifo, bool byte_shift)\nvoid adc_run(bool run)\nuint16_t adc_fifo_get_blocking(void)\nvoid adc_fifo_drain(void)", d: "FIFO + 連続変換。DMA と組み合わせて高速サンプリングするときに使う。" },
+  { n: "adc_set_clkdiv", s: "void adc_set_clkdiv(float clkdiv)", d: "連続変換のサンプル間隔。0 で最速（500ksps）。" },
+]},
+{ id: "cyw43", title: "CYW43（LED・Wi-Fi）", hdr: "pico/cyw43_arch.h",
+  note: "現在のリンクは pico_cyw43_arch_none（Wi-Fi スタックなし・LED のみ）。サーバー送信には pico_cyw43_arch_lwip_sys_freertos（FreeRTOS 併用）等に差し替える。sys_freertos 版の init はスケジューラ起動後にタスクから呼ぶ。",
+  apis: [
+  { n: "cyw43_arch_init", s: "int cyw43_arch_init(void)\nint cyw43_arch_init_with_country(uint32_t country)", d: "CYW43 チップを初期化。0 で成功。LED を使うだけでもこれが必要。国コードは CYW43_COUNTRY_JAPAN など。", isr: "no", cfg: "pico_cyw43_arch_*" },
+  { n: "cyw43_arch_deinit", s: "void cyw43_arch_deinit(void)", d: "終了処理。init と同じコア/タスクから呼ぶ。", isr: "no" },
+  { n: "cyw43_arch_gpio_put", s: "void cyw43_arch_gpio_put(uint wl_gpio, bool value)\nbool cyw43_arch_gpio_get(uint wl_gpio)", d: "CYW43 側 GPIO の操作。オンボード LED は CYW43_WL_GPIO_LED_PIN。SPI 越しなので遅く、割り込みからは呼べない。", isr: "no" },
+  { n: "cyw43_arch_enable_sta_mode", s: "void cyw43_arch_enable_sta_mode(void)", d: "ステーション（子機）モードを有効化。接続前に呼ぶ。", isr: "no" },
+  { n: "cyw43_arch_wifi_connect_timeout_ms", s: "int cyw43_arch_wifi_connect_timeout_ms(const char *ssid, const char *pw, uint32_t auth, uint32_t timeout)", d: "接続して IP 取得まで待つ。0 で成功、失敗は PICO_ERROR_*。auth は CYW43_AUTH_WPA2_AES_PSK など。", isr: "no" },
+  { n: "cyw43_arch_wifi_connect_async", s: "int cyw43_arch_wifi_connect_async(const char *ssid, const char *pw, uint32_t auth)", d: "非同期接続を開始するだけ。進捗は cyw43_tcpip_link_status で見る。再接続ロジックを自前で組むときに。", isr: "no" },
+  { n: "cyw43_tcpip_link_status", s: "int cyw43_tcpip_link_status(cyw43_t *self, int itf)\n// self=&cyw43_state, itf=CYW43_ITF_STA", d: "CYW43_LINK_DOWN / JOIN / NOIP / UP / FAIL / NONET / BADAUTH。UP で IP 取得済み。切断検出・再接続判定に使う。" },
+  { n: "cyw43_arch_lwip_begin", s: "void cyw43_arch_lwip_begin(void)\nvoid cyw43_arch_lwip_end(void)", d: "lwIP の raw API を呼ぶ区間を囲む排他。sys_freertos 版で socket/netconn API を使うなら不要。" },
+  { n: "cyw43_arch_poll", s: "void cyw43_arch_poll(void)\nvoid cyw43_arch_wait_for_work_until(absolute_time_t until)", d: "poll 版（*_poll ライブラリ）でのみ必要。定期的に呼んでドライバを回す。" },
+]},
+{ id: "irq", title: "割り込み", hdr: "hardware/irq.h",
+  note: "Cortex-M33 の NVIC。優先度は数値が小さいほど高い（0 が最高、PICO_DEFAULT_IRQ_PRIORITY=0x80）。FreeRTOS API を呼ぶ ISR は configMAX_SYSCALL_INTERRUPT_PRIORITY 以下の優先度（数値は以上）にする。",
+  apis: [
+  { n: "irq_set_exclusive_handler", s: "void irq_set_exclusive_handler(uint num, irq_handler_t handler)", d: "そのコアの IRQ に専用ハンドラを登録。既に登録済みだとパニック。num は UART0_IRQ / TIMER0_IRQ_0 など。", cfg: "hardware_irq" },
+  { n: "irq_add_shared_handler", s: "void irq_add_shared_handler(uint num, irq_handler_t handler, uint8_t order_priority)", d: "複数ハンドラで IRQ を共有。order_priority は呼び出し順（PICO_SHARED_IRQ_HANDLER_DEFAULT_ORDER_PRIORITY）。" },
+  { n: "irq_set_enabled", s: "void irq_set_enabled(uint num, bool enabled)", d: "呼んだコアの NVIC で有効/無効。ハンドラ登録とセットで、処理させたいコアから呼ぶ。", isr: "ok" },
+  { n: "irq_set_priority", s: "void irq_set_priority(uint num, uint8_t hardware_priority)", d: "優先度設定（上位ビットのみ有効）。" },
+  { n: "irq_remove_handler", s: "void irq_remove_handler(uint num, irq_handler_t handler)", d: "ハンドラ解除。無効化してから外す。" },
+  { n: "__not_in_flash_func", s: "void __not_in_flash_func(my_isr)(void) { ... }", d: "関数を RAM に置く。フラッシュ書き込み中にも走る必要がある ISR や、XIP キャッシュミスの遅延を嫌う箇所に。" },
+]},
+{ id: "sync", title: "排他・同期（SDK 版）", hdr: "pico/sync.h / hardware/sync.h",
+  note: "FreeRTOS のタスク間排他には原則 FreeRTOS の API を使う。SDK の同期プリミティブはコア間・割り込みとの排他や、SDK 内部・ライブラリとの整合用。",
+  apis: [
+  { n: "save_and_disable_interrupts", s: "uint32_t save_and_disable_interrupts(void)\nvoid restore_interrupts(uint32_t status)", d: "自コアの割り込み禁止（ネスト可）。他コアは止まらない。", isr: "ok", cfg: "hardware_sync" },
+  { n: "critical_section_init", s: "void critical_section_init(critical_section_t *cs)\nvoid critical_section_enter_blocking(critical_section_t *cs)\nvoid critical_section_exit(critical_section_t *cs)", d: "スピンロック + 割り込み禁止。コア間かつ割り込みとの排他。ごく短い区間専用。", isr: "ok", rt: "taskENTER_CRITICAL と混在させない" },
+  { n: "spin_lock_claim_unused", s: "int spin_lock_claim_unused(bool required)\nspin_lock_t *spin_lock_init(uint lock_num)\nuint32_t spin_lock_blocking(spin_lock_t *lock)\nvoid spin_unlock(spin_lock_t *lock, uint32_t saved_irq)", d: "ハードウェアスピンロックの直接利用。番号は claim で確保（FreeRTOS SMP ポートや SDK も使っている）。", isr: "ok" },
+  { n: "mutex_init", s: "void mutex_init(mutex_t *mtx)\nvoid mutex_enter_blocking(mutex_t *mtx)\nbool mutex_enter_timeout_ms(mutex_t *mtx, uint32_t ms)\nvoid mutex_exit(mutex_t *mtx)", d: "SDK のミューテックス（所有者あり・優先度継承なし）。静的定義は auto_init_mutex(name)。", isr: "no", rt: "SYNC_INTEROP=0 だとスピン待ち", cfg: "pico_sync" },
+  { n: "sem_init", s: "void sem_init(semaphore_t *sem, int16_t initial, int16_t max)\nvoid sem_acquire_blocking(semaphore_t *sem)\nbool sem_acquire_timeout_ms(semaphore_t *sem, uint32_t ms)\nbool sem_release(semaphore_t *sem)", d: "SDK のカウンティングセマフォ。release は割り込みから呼べる。", rt: "SYNC_INTEROP=0 だとスピン待ち" },
+  { n: "__dmb", s: "__dmb() / __dsb() / __isb()\n__sev() / __wfe() / __wfi()", d: "メモリバリアとイベント待ち命令。割り込み・別コアと共有するフラグを手で扱うときに。" },
+]},
+{ id: "i2c", title: "I2C", hdr: "hardware/i2c.h",
+  note: "インスタンスは i2c0 / i2c1。外付け温湿度センサ等を繋ぐときに使う。*_blocking はデバイスが無応答だとバスが固まり得るので、*_timeout_us 版を推奨。戻り値は転送バイト数、負値は PICO_ERROR_GENERIC（NACK）/ PICO_ERROR_TIMEOUT。",
+  apis: [
+  { n: "i2c_init", s: "uint i2c_init(i2c_inst_t *i2c, uint baudrate)", d: "初期化。戻り値は実際のボーレート。この後 gpio_set_function(pin, GPIO_FUNC_I2C) とプルアップを設定。", cfg: "hardware_i2c" },
+  { n: "i2c_write_timeout_us", s: "int i2c_write_timeout_us(i2c_inst_t *i2c, uint8_t addr, const uint8_t *src, size_t len,\n                         bool nostop, uint timeout_us)", d: "書き込み。nostop=true でストップを出さず、続く read をリピーテッドスタートにする（レジスタ読みの定番）。", isr: "no" },
+  { n: "i2c_read_timeout_us", s: "int i2c_read_timeout_us(i2c_inst_t *i2c, uint8_t addr, uint8_t *dst, size_t len,\n                        bool nostop, uint timeout_us)", d: "読み出し。", isr: "no" },
+  { n: "i2c_write_blocking", s: "int i2c_write_blocking(i2c_inst_t *i2c, uint8_t addr, const uint8_t *src, size_t len, bool nostop)\nint i2c_read_blocking(i2c_inst_t *i2c, uint8_t addr, uint8_t *dst, size_t len, bool nostop)", d: "タイムアウトなし版。中はビジーループ（FreeRTOS 的にもブロックではなく CPU を使い続ける）。", isr: "no", rt: "ビジーウェイト" },
+  { n: "i2c_deinit", s: "void i2c_deinit(i2c_inst_t *i2c)", d: "停止。" },
+]},
+{ id: "uart", title: "UART", hdr: "hardware/uart.h",
+  note: "インスタンスは uart0 / uart1。現在 stdio_uart は無効なので、デバッグ用シリアルを別に出す場合は自分で初期化する。",
+  apis: [
+  { n: "uart_init", s: "uint uart_init(uart_inst_t *uart, uint baudrate)", d: "8N1 で初期化。戻り値は実際のボーレート。gpio_set_function(pin, GPIO_FUNC_UART) が別途必要。", cfg: "hardware_uart" },
+  { n: "uart_set_format", s: "void uart_set_format(uart_inst_t *uart, uint data_bits, uint stop_bits, uart_parity_t parity)", d: "データ長・ストップビット・パリティ。" },
+  { n: "uart_write_blocking", s: "void uart_write_blocking(uart_inst_t *uart, const uint8_t *src, size_t len)\nvoid uart_puts(uart_inst_t *uart, const char *s)\nvoid uart_putc(uart_inst_t *uart, char c)", d: "送信。FIFO が空くまでビジーウェイト。putc は \\n→\\r\\n 変換あり、putc_raw はなし。", isr: "no", rt: "ビジーウェイト" },
+  { n: "uart_is_readable", s: "bool uart_is_readable(uart_inst_t *uart)\nchar uart_getc(uart_inst_t *uart)\nbool uart_is_readable_within_us(uart_inst_t *uart, uint32_t us)", d: "受信。getc はデータが来るまで戻らないので、readable で確認してから。", isr: "ok" },
+  { n: "uart_set_irq_enables", s: "void uart_set_irq_enables(uart_inst_t *uart, bool rx_has_data, bool tx_needs_data)", d: "受信/送信割り込みを有効化。ハンドラは irq_set_exclusive_handler(UART0_IRQ, ...) で登録。" },
+]},
+{ id: "wdt", title: "ウォッチドッグ・リセット", hdr: "hardware/watchdog.h / pico/bootrom.h",
+  note: "RP2350 の上限は 16777ms（約 16.7 秒）。FreeRTOS 併用時は「各タスクの生存をまとめて確認してから update する」監視タスクを作るのが定石（どれか 1 つでも止まったら蹴らない）。",
+  apis: [
+  { n: "watchdog_enable", s: "void watchdog_enable(uint32_t delay_ms, bool pause_on_debug)", d: "有効化。pause_on_debug=true でデバッガ停止中はカウントしない（開発中は true）。", cfg: "hardware_watchdog" },
+  { n: "watchdog_update", s: "void watchdog_update(void)", d: "カウンタを再装填（蹴る）。", isr: "ok" },
+  { n: "watchdog_caused_reboot", s: "bool watchdog_caused_reboot(void)\nbool watchdog_enable_caused_reboot(void)", d: "前回のリセット要因がウォッチドッグか。enable_ 版は watchdog_enable によるタイムアウトに限定（watchdog_reboot を除外）。起動時にログへ残す。" },
+  { n: "watchdog_reboot", s: "void watchdog_reboot(uint32_t pc, uint32_t sp, uint32_t delay_ms)", d: "意図的なリブート。pc=0, sp=0 で通常起動。" },
+  { n: "watchdog_hw->scratch", s: "watchdog_hw->scratch[0..7]", d: "ウォッチドッグリセットを跨いで値が残るレジスタ。リセット理由やクラッシュ箇所を次回起動へ渡すのに使える（一部は SDK/bootrom が使用）。" },
+  { n: "reset_usb_boot", s: "void reset_usb_boot(uint32_t usb_activity_gpio_pin_mask, uint32_t disable_interface_mask)", d: "BOOTSEL（USB マスストレージ）モードで再起動。ボタンを押さずに書き込みモードへ入れるコマンドを作るのに便利。引数は通常 0, 0。", cfg: "pico_bootrom" },
+]},
+{ id: "flash", title: "フラッシュ書き込み", hdr: "hardware/flash.h / pico/flash.h",
+  note: "Pico 2 W のフラッシュは 4MB（PICO_FLASH_SIZE_BYTES）。消去は 4096B（FLASH_SECTOR_SIZE）、書き込みは 256B（FLASH_PAGE_SIZE）単位・境界揃え。オフセットはフラッシュ先頭からで、読み出しは XIP_BASE + offset のポインタで普通に読む。書き込み中は XIP が止まるので、もう一方のコアと割り込みも止める必要がある。",
+  apis: [
+  { n: "flash_safe_execute", s: "int flash_safe_execute(void (*func)(void *), void *param, uint32_t enter_exit_timeout_ms)", d: "他コアの停止と割り込み禁止を面倒見たうえで func を実行する。erase/program はこの中で呼ぶ。FreeRTOS SMP 環境でも対応済み。戻り値 PICO_OK で成功。", isr: "no", cfg: "pico_flash" },
+  { n: "flash_range_erase", s: "void flash_range_erase(uint32_t flash_offs, size_t count)", d: "セクタ消去（1 になる）。数十 ms かかる。プログラム領域を消さないよう、末尾側のセクタを使う。", isr: "no", cfg: "hardware_flash" },
+  { n: "flash_range_program", s: "void flash_range_program(uint32_t flash_offs, const uint8_t *data, size_t count)", d: "ページ書き込み（1→0 方向のみ）。data は RAM 上に置く（フラッシュ上のデータを直接渡せない）。", isr: "no" },
+  { n: "PICO_FLASH_SIZE_BYTES", s: "#define PICO_FLASH_SIZE_BYTES (4 * 1024 * 1024)\nconst uint8_t *p = (const uint8_t *)(XIP_BASE + offset);", d: "設定保存用領域は PICO_FLASH_SIZE_BYTES - FLASH_SECTOR_SIZE などで決めるのが典型。リンカのバイナリ末尾（__flash_binary_end）と重ならないこと。" },
+]},
+{ id: "multicore", title: "マルチコア", hdr: "pico/multicore.h",
+  note: "現在 configNUMBER_OF_CORES=1（FreeRTOS はコア 0 のみ）。SMP 化するとコア 1 は FreeRTOS が使うので multicore_launch_core1 は呼ばない。",
+  apis: [
+  { n: "multicore_launch_core1", s: "void multicore_launch_core1(void (*entry)(void))", d: "コア 1 で entry を起動。スタックはデフォルト領域（scratch）。", isr: "no", rt: "SMP と併用不可", cfg: "pico_multicore" },
+  { n: "multicore_reset_core1", s: "void multicore_reset_core1(void)", d: "コア 1 をリセット。" },
+  { n: "multicore_fifo_push_blocking", s: "void multicore_fifo_push_blocking(uint32_t data)\nuint32_t multicore_fifo_pop_blocking(void)\nbool multicore_fifo_rvalid(void) / multicore_fifo_wready(void)", d: "コア間の 32bit ハードウェア FIFO（深さ 4〜8）。FreeRTOS SMP ポートや flash_safe_execute が内部で使うので、自前利用は衝突に注意。", rt: "RTOS 内部で使用" },
+  { n: "multicore_lockout_victim_init", s: "void multicore_lockout_victim_init(void)\nvoid multicore_lockout_start_blocking(void)\nvoid multicore_lockout_end_blocking(void)", d: "相手コアを一時停止させる仕組み。フラッシュ書き込み時に使われる。" },
+  { n: "get_core_num", s: "uint get_core_num(void)", d: "実行中のコア番号（0 / 1）。", isr: "ok", cfg: "hardware_sync" },
+]},
+{ id: "misc", title: "ユーティリティ・診断", hdr: "pico/*.h / hardware/clocks.h",
+  apis: [
+  { n: "pico_get_unique_board_id_string", s: "void pico_get_unique_board_id(pico_unique_board_id_t *id_out)\nvoid pico_get_unique_board_id_string(char *id_out, uint len)", d: "フラッシュ固有の 64bit ID。サーバー送信時のデバイス識別子に使える。文字列版は len >= 2*PICO_UNIQUE_BOARD_ID_SIZE_BYTES+1。", cfg: "pico_unique_id" },
+  { n: "get_rand_32", s: "uint32_t get_rand_32(void)\nuint64_t get_rand_64(void)", d: "ハード由来のエントロピーで初期化された乱数（暗号用途には不十分）。再接続のバックオフにジッタを入れるのに。", cfg: "pico_rand" },
+  { n: "clock_get_hz", s: "uint32_t clock_get_hz(clock_handle_t clock)\n// clk_sys / clk_peri / clk_usb / clk_adc", d: "各クロックの実周波数。RP2350 のデフォルト clk_sys は 150MHz。", cfg: "hardware_clocks" },
+  { n: "set_sys_clock_khz", s: "bool set_sys_clock_khz(uint32_t freq_khz, bool required)", d: "システムクロック変更。FreeRTOS の tick・UART ボーレート等に影響するので起動直後に 1 回だけ。" },
+  { n: "panic", s: "void panic(const char *fmt, ...)\nvoid panic_unsupported(void)", d: "メッセージを出して停止（戻らない）。デフォルトでは stdout に出してブレークポイント命令で止まる。" },
+  { n: "hard_assert", s: "void hard_assert(bool condition, ...)\n// assert() は NDEBUG で消える", d: "リリースビルドでも残るアサート。PARAM_ASSERTIONS_ENABLED_xxx で SDK 内部の引数チェックも有効化できる。" },
+  { n: "tight_loop_contents", s: "void tight_loop_contents(void)", d: "ビジーループ本体に置く空関数（意図の明示とデバッグフック用）。" },
+  { n: "bi_decl", s: "bi_decl(bi_program_description(\"...\"))\nbi_decl(bi_1pin_with_name(PIN, \"name\"))", d: "バイナリ情報の埋め込み。picotool info で使用ピンや説明を確認できる。", cfg: "pico_binary_info" },
+]},
+{ id: "rtos", title: "FreeRTOS と併用するときの注意", hdr: "FreeRTOSConfig.h",
+  note: "現在 configSUPPORT_PICO_SYNC_INTEROP=0 / configSUPPORT_PICO_TIME_INTEROP=0。この状態では SDK の「待つ」API は FreeRTOS のブロックにならない。",
+  apis: [
+  { n: "configSUPPORT_PICO_TIME_INTEROP", s: "#define configSUPPORT_PICO_TIME_INTEROP 1", d: "1 にすると sleep_ms / sleep_until がタスクから呼ばれた場合 FreeRTOS のブロック（vTaskDelay 相当）になる。0 のままだと呼んだタスクが CPU を握り続け、低優先度タスクが動けない。タスク内では vTaskDelay を使うのが基本。" },
+  { n: "configSUPPORT_PICO_SYNC_INTEROP", s: "#define configSUPPORT_PICO_SYNC_INTEROP 1", d: "1 にすると SDK の mutex_t / semaphore_t / queue_t の待ちがタスクのブロックになる。stdio 内部の mutex もこれに該当するので、printf を複数タスクから呼ぶなら影響する。" },
+  { n: "ビジーウェイト系 API", s: "busy_wait_*, i2c_*_blocking, uart_write_blocking, adc_read, getchar_timeout_us(0 以外)", d: "設定に関係なく CPU を使って待つ。長くなる場合はタスク優先度を低めにするか、割り込み + タスク通知に置き換える。" },
+  { n: "SDK コールバックの文脈", s: "alarm / repeating_timer / gpio_irq / stdio chars_available コールバック", d: "割り込み文脈。FreeRTOS API は FromISR 版のみ、最後に portYIELD_FROM_ISR(woken)。中で SDK の mutex・printf を使わない。" },
+  { n: "割り込み優先度", s: "irq_set_priority(num, prio)  // 数値 >= configMAX_SYSCALL_INTERRUPT_PRIORITY", d: "FromISR を呼ぶ ISR の優先度は configMAX_SYSCALL_INTERRUPT_PRIORITY より「低く」（数値は大きく）する。このプロジェクトは 16（0x10）なので SDK デフォルトの 0x80 は OK。0x00 にした ISR からは FromISR も呼べない。" },
+  { n: "cyw43_arch のバリアント", s: "pico_cyw43_arch_none\npico_cyw43_arch_lwip_poll\npico_cyw43_arch_lwip_threadsafe_background\npico_cyw43_arch_lwip_sys_freertos", d: "FreeRTOS で Wi-Fi を使うなら sys_freertos（lwIP がタスクとして動き、socket/netconn API が使える）。none は LED だけ。poll は main ループ前提で RTOS と相性が悪い。" },
+]},
+];
+
+const content = document.getElementById("content");
+const toc = document.getElementById("toc");
+const empty = document.getElementById("empty");
+const q = document.getElementById("q");
+
+function el(tag, cls, text) {
+  const e = document.createElement(tag);
+  if (cls) e.className = cls;
+  if (text !== undefined) e.textContent = text;
+  return e;
+}
+
+for (const sec of DATA) {
+  const link = el("a");
+  link.href = "#" + sec.id;
+  link.append(el("span", "n", String(sec.apis.length)), sec.title);
+  link.dataset.sec = sec.id;
+  toc.append(link);
+
+  const s = el("section");
+  s.id = sec.id;
+  const h = el("h2", null, sec.title);
+  h.append(el("small", null, sec.hdr));
+  s.append(h);
+  if (sec.note) s.append(el("p", "note", sec.note));
+
+  for (const a of sec.apis) {
+    const card = el("div", "api");
+    card.id = a.n;
+    card.dataset.text = (a.n + " " + a.s + " " + a.d + " " + (a.isr || "") + " " + (a.rt || "") + " " + (a.cfg || "")).toLowerCase();
+    const top = el("div", "top");
+    const name = el("a", "name", a.n);
+    name.href = "#" + encodeURIComponent(a.n);
+    top.append(name);
+    if (a.isr === "no") top.append(el("span", "badge b-no", "ISR不可"));
+    else if (a.isr === "ok") top.append(el("span", "badge b-ok", "ISR可"));
+    if (a.rt) top.append(el("span", "badge b-isr", "RTOS注意: " + a.rt));
+    if (a.cfg) top.append(el("span", "badge b-cfg", a.cfg));
+    card.append(top, el("code", "sig", a.s), el("p", "desc", a.d));
+    s.append(card);
+  }
+  content.append(s);
+}
+
+function filter() {
+  const words = q.value.toLowerCase().split(/\s+/).filter(Boolean);
+  let total = 0;
+  for (const s of content.querySelectorAll("section")) {
+    let shown = 0;
+    for (const card of s.querySelectorAll(".api")) {
+      const ok = words.every(w => card.dataset.text.includes(w));
+      card.style.display = ok ? "" : "none";
+      if (ok) shown++;
+    }
+    s.style.display = shown ? "" : "none";
+    toc.querySelector('[data-sec="' + s.id + '"]').style.display = shown ? "" : "none";
+    total += shown;
+  }
+  empty.style.display = total ? "none" : "block";
+}
+
+function firstVisible() {
+  for (const card of content.querySelectorAll(".api")) {
+    if (card.style.display !== "none") return card;
+  }
+  return null;
+}
+
+q.addEventListener("input", filter);
+q.addEventListener("keydown", e => {
+  if (e.key === "Enter") {
+    const card = firstVisible();
+    if (card) { location.hash = encodeURIComponent(card.id); q.blur(); }
+  } else if (e.key === "Escape") {
+    q.value = ""; filter(); q.blur();
+  }
+});
+document.addEventListener("keydown", e => {
+  if (e.key === "/" && document.activeElement !== q) { e.preventDefault(); q.focus(); q.select(); }
+});
+
+if (location.hash) {
+  const target = document.getElementById(decodeURIComponent(location.hash.slice(1)));
+  if (target) target.scrollIntoView();
+}
+</script>
+</body>
+</html>

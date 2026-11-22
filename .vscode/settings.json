@@ -1,0 +1,8 @@
+{
+    "clangd.arguments": [
+        "--compile-commands-dir=${workspaceFolder}/build",
+        "--query-driver=/usr/bin/arm-none-eabi-*"
+    ],
+    "C_Cpp.intelliSenseEngine": "disabled",
+    "editor.inlineSuggest.enabled": false
+}

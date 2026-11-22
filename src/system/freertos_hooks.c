@@ -9,7 +9,7 @@ void vApplicationStackOverflowHook(TaskHandle_t xTask, char *pcTaskName)
     (void)xTask;
     printf("STACK OVERFLOW: task '%s'\n", pcTaskName);
     taskDISABLE_INTERRUPTS();
-    for (;;) {}
+    for (;;) {__wfi();}
 }
 
 /* --- malloc失敗検出 (configUSE_MALLOC_FAILED_HOOK 1) --- */
@@ -17,7 +17,7 @@ void vApplicationMallocFailedHook(void)
 {
     printf("MALLOC FAILED\n");
     taskDISABLE_INTERRUPTS();
-    for (;;) {}
+    for (;;) {__wfi();}
 }
 
 /* --- アイドルタスク用静的メモリ (configSUPPORT_STATIC_ALLOCATION 1) --- */

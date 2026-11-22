@@ -203,7 +203,7 @@
 /* コア数: 2（Pico 2 WはデュアルコアCortex-M33）
  * 両方のコアでFreeRTOSを実行 */
 #ifndef configNUMBER_OF_CORES
-#define configNUMBER_OF_CORES 2
+#define configNUMBER_OF_CORES 1
 #endif
 #define configNUM_CORES configNUMBER_OF_CORES
 
