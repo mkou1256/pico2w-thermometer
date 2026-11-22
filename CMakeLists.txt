@@ -25,6 +25,7 @@ add_executable(pico2w-thermometer ${SRC})
 # ---- Add include directories ----
 target_include_directories(pico2w-thermometer PRIVATE ${SRC_DIR})
 target_include_directories(pico2w-thermometer PRIVATE ${SRC_DIR}/app)
+target_include_directories(pico2w-thermometer PRIVATE ${SRC_DIR}/drivers)
 target_include_directories(pico2w-thermometer PRIVATE ${SRC_DIR}/config)
 target_include_directories(pico2w-thermometer PRIVATE ${SRC_DIR}/system)
 target_include_directories(pico2w-thermometer PRIVATE ${PROJECT_ROOT}/tests)
