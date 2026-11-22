@@ -9,8 +9,8 @@
 #include <stdio.h>
 #include "pico/time.h"
 
-#define LOG_BUFFER_SIZE 256
-
+#define LOG_BUFFER_SIZE 1024
+#define LOG_TIMEOUT_MS 1
 static bool init_ = false;
 static ComModule* com_module_ = nullptr;
 static LogLvl log_level_ = LogLvl::INFO;
@@ -97,7 +97,7 @@ void Logger::log(LogLvl level, int line, const char* message, ...) {
     /* 改行コード保証: CRLF終端でない場合は、末尾3バイトを\r\n\0にする */
     ensure_crlf(log_buffer_);
 
-    com_module_->Send((uint8_t*)log_buffer_, strlen(log_buffer_), 0, nullptr);
+    com_module_->Send((uint8_t*)log_buffer_, strlen(log_buffer_), LOG_TIMEOUT_MS, nullptr);
 
     xSemaphoreGive(log_mutex_);
 }
