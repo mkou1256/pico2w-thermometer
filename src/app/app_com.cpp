@@ -1,6 +1,7 @@
 #include "app_com.h"
 #include "ComModule.h"
 #include "UsbCdcCom.h"
+#include "Logger.h"
 
 enum COM_CHANNEL {
     COM_CHANNEL_USB_CDC = 0,
@@ -27,5 +28,9 @@ bool AppCom_Init() {
     if (!comModule_check()) {
         return false;
     }
+
+    Logger::init(s_comModules[COM_CHANNEL_USB_CDC]);
+    LOG_INFO("AppCom_Init done");
+
     return true;
 }
